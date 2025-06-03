@@ -533,6 +533,7 @@ void test_to_hex_1(TestObjs *objs) {
   // some basic tests for to_hex()
 
   std::string result1 = objs->zero.to_hex();
+  // std::cout << result1 << std::endl;
   ASSERT("0" == result1);
 
   std::string result2 = objs->negative_nine.to_hex();

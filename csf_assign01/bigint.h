@@ -4,6 +4,8 @@
 #include <initializer_list>
 #include <vector>
 #include <string>
+#include <sstream>
+#include <iostream>
 #include <cstdint>
 
 //! @file
@@ -15,7 +17,8 @@
 class BigInt {
 private:
   // TODO: add fields
-
+  std::vector<uint64_t> magnitude;
+  bool sign;      // true = negative, false = positive
 public:
   //! Default constructor.
   //! The initialized BigInt value should be equal to 0.
