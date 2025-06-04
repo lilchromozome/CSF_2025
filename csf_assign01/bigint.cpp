@@ -74,6 +74,10 @@ BigInt BigInt::operator-() const
 {
   // TODO: implement
   BigInt num = *this;
+
+  if(num.magnitude.empty() || (num.magnitude.size() == 1 && num.magnitude[0] == 0)) {
+    return num;
+  }
   num.sign = !sign;
   return num;
 }
@@ -107,7 +111,7 @@ int BigInt::compare(const BigInt &rhs) const
 std::string BigInt::to_hex() const
 {
   // TODO: implement
-  if (magnitude.empty() || *magnitude.rbegin() == 0) {
+  if (magnitude.empty()) {
     return "0";
   }
   std::stringstream hex;

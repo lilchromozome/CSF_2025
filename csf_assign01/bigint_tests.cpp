@@ -15,6 +15,8 @@ struct TestObjs {
   BigInt negative_nine;
   BigInt negative_three;
   BigInt nine;
+  BigInt bigNum;
+  BigInt bigNum_leading_zero;
   // TODO: add additional test fixture objects
 
   TestObjs();
@@ -42,6 +44,8 @@ void test_add_1(TestObjs *objs);
 void test_add_2(TestObjs *objs);
 void test_add_3(TestObjs *objs);
 void test_add_4(TestObjs *objs);
+void test_negate_1(TestObjs *objs);
+void test_negate_2(TestObjs *objs);
 void test_sub_1(TestObjs *objs);
 void test_sub_2(TestObjs *objs);
 void test_sub_3(TestObjs *objs);
@@ -58,6 +62,7 @@ void test_div_1(TestObjs *objs);
 void test_div_2(TestObjs *objs);
 void test_to_hex_1(TestObjs *objs);
 void test_to_hex_2(TestObjs *objs);
+void test_to_hex_3(TestObjs *objs);
 void test_to_dec_1(TestObjs *objs);
 void test_to_dec_2(TestObjs *objs);
 // TODO: declare additional test functions
@@ -78,6 +83,8 @@ int main(int argc, char **argv) {
   TEST(test_add_2);
   TEST(test_add_3);
   TEST(test_add_4);
+  TEST(test_negate_1);
+  TEST(test_negate_2);
   TEST(test_sub_1);
   TEST(test_sub_2);
   TEST(test_sub_3);
@@ -94,6 +101,7 @@ int main(int argc, char **argv) {
   TEST(test_div_2);
   TEST(test_to_hex_1);
   TEST(test_to_hex_2);
+  TEST(test_to_hex_3);
   TEST(test_to_dec_1);
   TEST(test_to_dec_2);
   // TODO: add calls to TEST for additional test functions
@@ -115,6 +123,8 @@ TestObjs::TestObjs()
   , negative_nine(9UL, true)
   , negative_three(3UL, true)
   , nine(9UL)
+  , bigNum({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL})
+  , bigNum_leading_zero({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL, 0x0UL})
   // TODO: initialize additional test fixture objects
 {
 }
@@ -202,6 +212,9 @@ void test_u64_ctor(TestObjs *objs) {
 
   check_contents(objs->nine, { 9UL });
   ASSERT(!objs->nine.is_negative());
+
+  check_contents(objs->bigNum, { 0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL });
+  ASSERT(!objs->bigNum.is_negative());
 }
 
 void test_initlist_ctor(TestObjs *objs) {
@@ -210,6 +223,9 @@ void test_initlist_ctor(TestObjs *objs) {
 
   check_contents(objs->negative_two_pow_64, { 0UL, 1UL });
   ASSERT(objs->negative_two_pow_64.is_negative());
+
+  check_contents(objs->bigNum_leading_zero, { 0UL, 0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL });
+  ASSERT(!objs->bigNum_leading_zero.is_negative());
 }
 
 void test_copy_ctor(TestObjs *objs) {
@@ -293,6 +309,50 @@ void test_add_4(TestObjs *) {
     check_contents(result, {0xb59e87ef7168ae78UL, 0xeda1de5b1d8a2999UL, 0x582fd87e1ac8af37UL, 0x5a15629c64224557UL, 0x3ec79d142be30f0UL, 0x33e531c4dbbd2d3dUL, 0x946004cdecfe6d47UL, 0x3e67713d575ed0b1UL, 0xcc7edfb347fcd8b4UL, 0x5978260d5ecf00a7UL, 0xe242586be49c40c1UL, 0xf734798ec1dd4ddaUL, 0x76394dUL});
     ASSERT(result.is_negative());
   }
+
+}
+
+void test_negate_1(TestObjs *objs){
+  // basic tests for unary negation
+  BigInt result1 = -objs->zero;
+  check_contents(result1, { 0UL });
+  ASSERT(!result1.is_negative());
+
+  BigInt result2 = -objs->one;
+  check_contents(result2, { 1UL });
+  ASSERT(result2.is_negative());
+
+  BigInt result3 = -objs->two_pow_64;
+  check_contents(result3, { 0UL, 1UL });
+  ASSERT(result3.is_negative());
+
+  BigInt result4 = -objs->negative_two_pow_64;
+  check_contents(result4, { 0UL, 1UL });
+  ASSERT(!result4.is_negative());
+}
+
+void test_negate_2(TestObjs *objs) {
+  // harder tests for unary negation
+  {
+    BigInt val({0x1a2b3c4d5e6f7081UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL});
+    BigInt result = -val;
+    check_contents(result, {0x1a2b3c4d5e6f7081UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL});
+    ASSERT(result.is_negative());
+  }
+
+  {
+    BigInt val({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL}, true);
+    BigInt result = -val;
+    check_contents(result, {0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL});
+    ASSERT(!result.is_negative());
+  }
+  BigInt result1 = -objs->bigNum;
+  check_contents(result1, {0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL});
+  ASSERT(result1.is_negative());
+
+  BigInt result2 = -objs->bigNum_leading_zero;
+  check_contents(result2, {0x0UL, 0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL});
+  ASSERT(result2.is_negative());
 
 }
 
@@ -560,7 +620,19 @@ void test_to_hex_2(TestObjs *) {
     std::string result = val.to_hex();
     ASSERT("-14318cf757a58cec650d523acc64ef419b0aadf4d14f1b5cbefaf0e63a6e3a6579a3f9d2aab0ccf498dc4c634eb412186595636ed41d7d8b5422df2c7e5d4" == result);
   }
+}
 
+  void test_to_hex_3(TestObjs *objs) {
+  // more tests for to_hex()
+
+  std::string result1 = objs->bigNum.to_hex();
+  // std::cout << result1 << std::endl;
+  ASSERT("99aabbccddeeff0011223344556677880fedcba987654321123456789abcdef0" == result1);
+
+
+  std::string result2 = objs->bigNum_leading_zero.to_hex();
+  // std::cout << result2 << std::endl;
+  ASSERT("99aabbccddeeff0011223344556677880fedcba987654321123456789abcdef0" == result2);
 }
 
 void test_to_dec_1(TestObjs *objs) {
