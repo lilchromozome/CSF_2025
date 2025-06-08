@@ -3,7 +3,7 @@
 
 BigInt::BigInt()
   // TODO: initialize member variables
-  :   magnitude{0}, sign(false)
+  :   magnitude(), sign(false)
 {
 }
 
@@ -80,24 +80,24 @@ BigInt BigInt::operator+(const BigInt &rhs) const
 
   for (size_t i = 0; i < max_size; ++i){
     uint64_t a = (i<magnitude.size()) ? magnitude[i] : 0;
-    uint64_t b = (i<rhs.magnitude.size()) ? magnitude[i] : 0;
+    uint64_t b = (i<rhs.magnitude.size()) ? rhs.magnitude[i] : 0;
 
-    uint64_t sum = a + b + carry;
+    uint64_t sum = a + b;
+    uint64_t sum_with_carry = sum + carry;
 
-    if (sum < a || sum < b){
-      carry = 1;
-    }else if (carry ==1 && sum == a + b){
+    if (sum < a || sum < b || sum_with_carry < sum){
       carry = 1;
     }else{
       carry = 0;
     }
 
-    result.magnitude.push_back(sum);
+    result.magnitude.push_back(sum_with_carry);
   }
 
   if(carry > 0){
     result.magnitude.push_back(1);
   }
+
 
   return result;
 }
