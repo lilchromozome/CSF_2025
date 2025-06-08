@@ -62,6 +62,44 @@ uint64_t BigInt::get_bits(unsigned index) const
 BigInt BigInt::operator+(const BigInt &rhs) const
 {
   // TODO: implement
+  // two different sign
+  if (sign != rhs.sign){
+    if(sign){
+      return rhs - (-*this); // -a+b == b-a
+    } else{
+      return *this - (-rhs); // a+(-b) == a-b
+    }
+  }
+
+  //same sign
+  BigInt result;
+  result.sign = sign; // result have the same sign
+
+  const size_t max_size = std::max(magnitude.size(), rhs.magnitude.size());
+  uint64_t carry = 0;
+
+  for (size_t i = 0; i < max_size; ++i){
+    uint64_t a = (i<magnitude.size()) ? magnitude[i] : 0;
+    uint64_t b = (i<rhs.magnitude.size()) ? magnitude[i] : 0;
+
+    uint64_t sum = a + b + carry;
+
+    if (sum < a || sum < b){
+      carry = 1;
+    }else if (carry ==1 && sum == a + b){
+      carry = 1;
+    }else{
+      carry = 0;
+    }
+
+    result.magnitude.push_back(sum);
+  }
+
+  if(carry > 0){
+    result.magnitude.push_back(1);
+  }
+
+  return result;
 }
 
 BigInt BigInt::operator-(const BigInt &rhs) const
@@ -85,6 +123,15 @@ BigInt BigInt::operator-() const
 bool BigInt::is_bit_set(unsigned n) const
 {
   // TODO: implement
+  size_t word_index = n / 64;
+  size_t bit_offset = n % 64;
+
+  if (word_index >= magnitude.size()){
+    return false;
+  }
+
+  uint64_t word = magnitude[word_index];
+  return (word >> bit_offset) & 1;
 }
 
 BigInt BigInt::operator<<(unsigned n) const
