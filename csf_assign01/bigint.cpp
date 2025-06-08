@@ -179,12 +179,31 @@ uint64_t BigInt::copy_bits(uint64_t word, unsigned n){
 BigInt BigInt::operator*(const BigInt &rhs) const
 {
   // TODO: implement
+  BigInt result (0, false);
+  if (is_zero() || rhs.is_zero()){
+    return result;
+  }
+  // XOR for sign of multiplication
+  if(sign ^ rhs.sign){ 
+    result.sign = true;
+  }
 }
 
 // WL
 BigInt BigInt::operator/(const BigInt &rhs) const
 {
   // TODO: implement
+  if(rhs.is_zero()){
+    throw std::invalid_argument("Divide by 0");
+  } 
+  BigInt result;
+  // XOR for sign of division
+  if(sign ^ rhs.sign){ 
+    result.sign = true;
+  }
+
+  
+
 }
 
 // WL
@@ -192,7 +211,7 @@ int BigInt::compare(const BigInt &rhs) const
 {
   // TODO: implement
 
-  if (is_zero() & rhs.is_zero()){
+  if (is_zero() && rhs.is_zero()){
     return 0;
   }
 
@@ -283,5 +302,6 @@ std::string BigInt::to_hex() const
 std::string BigInt::to_dec() const
 {
   // TODO: implement
+
 }
 
