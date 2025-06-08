@@ -134,9 +134,45 @@ bool BigInt::is_bit_set(unsigned n) const
   return (word >> bit_offset) & 1;
 }
 
+// WL
 BigInt BigInt::operator<<(unsigned n) const
 {
+  if (is_negative()) {
+    throw std::invalid_argument("Left shift is not allowed on negative values");
+  }
   // TODO: implement
+
+  unsigned int words_shifted = n / 64;
+  unsigned int bits_shifted = n % 64;
+  uint64_t buffer = 0;
+  BigInt result;
+  result.magnitude = std::vector<uint64_t>(magnitude.size() + words_shifted + 1, 0);
+  result.sign = false;
+
+  //  shift bits
+  unsigned int word_count = words_shifted;
+  for (size_t i = 0; i < magnitude.size(); ++i) {
+    uint64_t word = magnitude[i];
+    result.magnitude[words_shifted + i] |= (word << bits_shifted) | buffer;
+    buffer = (bits_shifted == 0) ? 0 : (word >> (64 - bits_shifted));
+  }
+
+  if (buffer != 0) {
+    result.magnitude[words_shifted + magnitude.size()] = buffer;
+  }
+
+  while (result.magnitude.size() > 1 && result.magnitude.back() == 0) {
+    result.magnitude.pop_back();
+  }
+
+  return result;
+}
+
+// Helper to copy the first n bits of word
+uint64_t BigInt::copy_bits(uint64_t word, unsigned n){
+  if (n >= 64) return word;
+  uint64_t copied = 0;
+  return word & ((1ULL << n) - 1);
 }
 
 BigInt BigInt::operator*(const BigInt &rhs) const
@@ -144,11 +180,13 @@ BigInt BigInt::operator*(const BigInt &rhs) const
   // TODO: implement
 }
 
+// WL
 BigInt BigInt::operator/(const BigInt &rhs) const
 {
   // TODO: implement
 }
 
+// WL
 int BigInt::compare(const BigInt &rhs) const
 {
   // TODO: implement
@@ -188,6 +226,7 @@ std::string BigInt::to_hex() const
 
 }
 
+//  WL
 std::string BigInt::to_dec() const
 {
   // TODO: implement

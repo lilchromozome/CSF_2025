@@ -123,6 +123,9 @@ public:
   //! @throw std::invalid_argument if this object represents a negative value
   BigInt operator<<(unsigned n) const;
 
+  // Helper to copy the first n bits of word
+  uint64_t copy_bits(uint64_t word, unsigned n = 64);
+
   //! Multiplication operator.
   //!
   //! @param rhs the right-hand side BigInt value (the left hand value
