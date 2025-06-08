@@ -161,6 +161,7 @@ BigInt BigInt::operator<<(unsigned n) const
     result.magnitude[words_shifted + magnitude.size()] = buffer;
   }
 
+  //  delete empty uint_64
   while (result.magnitude.size() > 1 && result.magnitude.back() == 0) {
     result.magnitude.pop_back();
   }
@@ -190,6 +191,58 @@ BigInt BigInt::operator/(const BigInt &rhs) const
 int BigInt::compare(const BigInt &rhs) const
 {
   // TODO: implement
+
+  if (is_zero() & rhs.is_zero()){
+    return 0;
+  }
+
+  // compare signs
+  if(is_negative()){
+    if (rhs.sign)
+    {
+      return compare_magnitudes(*this, rhs);
+    } else return -1;
+  } else {
+    if(!rhs.is_negative()){
+      return compare_magnitudes(*this, rhs);
+    } else return 1;
+  } 
+}
+
+
+int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
+
+  const auto &left = lhs.magnitude;
+  const auto &right = rhs.magnitude;
+
+  size_t left_size = kill_leading_zeros(left);
+  size_t right_size = kill_leading_zeros(right);
+
+  // Diff length
+  if (left_size > right_size) return 1;
+  if (left_size < right_size) return -1;
+
+  // Same length
+  for (size_t i = left_size; i-- > 0;) {
+    return left[i] - right[i];
+  }
+
+  return 0;
+}
+
+size_t BigInt::kill_leading_zeros(const std::vector<uint64_t> &vec) {
+  size_t i = vec.size();
+  while (i > 0 && vec[i - 1] == 0) {
+    --i;
+  }
+  return i;
+}
+
+bool BigInt::is_zero() const{
+  for (uint64_t word : magnitude) {
+    if (word > 0) return false;
+  }
+  return true;
 }
 
 

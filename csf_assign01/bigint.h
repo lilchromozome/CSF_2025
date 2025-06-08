@@ -166,6 +166,14 @@ public:
   //!         0 means equal, positive means greater)
   int compare(const BigInt &rhs) const;
 
+  // Helper function to compare magnitudes
+  static int compare_magnitudes(const BigInt &lhs, const BigInt &rhs);
+
+  static size_t kill_leading_zeros(const std::vector<uint64_t> &vec);
+
+  // check if BigInt is equal to 0
+  bool is_zero() const;
+
   // comparison operators: you won't need to modify these,
   // since they're all implemented using compare
   bool operator==(const BigInt &rhs) const { return compare(rhs) == 0; }
