@@ -62,7 +62,7 @@ uint64_t BigInt::get_bits(unsigned index) const
 BigInt BigInt::operator+(const BigInt &rhs) const
 {
   // TODO: implement
-  // two different sign
+  // two different sign, convert addition into subtraction
   if (sign != rhs.sign){
     if(sign){
       return rhs - (-*this); // -a+b == b-a
@@ -85,6 +85,7 @@ BigInt BigInt::operator+(const BigInt &rhs) const
     uint64_t sum = a + b;
     uint64_t sum_with_carry = sum + carry;
 
+    //check the overflow, if yes, need to determine new carry
     if (sum < a || sum < b || sum_with_carry < sum){
       carry = 1;
     }else{
@@ -94,6 +95,7 @@ BigInt BigInt::operator+(const BigInt &rhs) const
     result.magnitude.push_back(sum_with_carry);
   }
 
+  //add carry if there's left
   if(carry > 0){
     result.magnitude.push_back(1);
   }
@@ -107,7 +109,7 @@ BigInt BigInt::operator-(const BigInt &rhs) const
   // TODO: implement
   // Hint: a - b could be computed as a + -b
 
-  //different sign
+  //different sign, can convert as addition
   if (sign != rhs.sign) {
     return *this + (-rhs); // a - (-b) or (-a) - b
   }
@@ -116,19 +118,21 @@ BigInt BigInt::operator-(const BigInt &rhs) const
   BigInt result;
   int compare_two = compare_magnitudes(*this, rhs);
 
+  //determine which is larger
   const std::vector<uint64_t> *larger;
   const std::vector<uint64_t> *smaller;
   bool result_sign;
 
-  if (compare_two >= 0){
+  if (compare_two >= 0){ //normal subtraction
     larger = &magnitude;
     smaller = &rhs.magnitude;
     result_sign = sign;
-  } else{
+  } else{               //ned to flip sign
     larger = &rhs.magnitude;
     smaller = &magnitude;
     result_sign = !sign;
   }
+
 
   uint64_t borrow = 0;
   for (size_t i = 0; i < larger->size(); ++i){
@@ -146,10 +150,12 @@ BigInt BigInt::operator-(const BigInt &rhs) const
     result.magnitude.push_back(sub);
   }
 
+  //remove leading zeros
   while (result.magnitude.size() > 1 && result.magnitude.back() == 0) {
     result.magnitude.pop_back();
   }
 
+  //zero's sign need to be false, positivezero 
   result.sign = result.is_zero() ? false : result_sign;
   return result;
 }
