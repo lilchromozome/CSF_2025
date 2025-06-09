@@ -161,9 +161,9 @@ BigInt BigInt::operator-() const
 
   if(num.is_zero()) {
     num.sign = false;
-    return num;
+  } else{
+    num.sign = !sign;
   }
-  num.sign = !sign;
   return num;
 }
 
@@ -231,7 +231,30 @@ BigInt BigInt::operator*(const BigInt &rhs) const
     return result;
   }
 
+  result.magnitude.resize(magnitude.size() +rhs.magnitude.size(), 0);
+
+  for (size_t i=0; i< magnitude.size(); ++i){
+    uint64_t a = magnitude[i];
+    uint64_t carry = 0;
+
+    for (size_t j = 0; j < rhs.magnitude.size(); ++j){
+      __uint128_t product = (__uint128_t)a * rhs.magnitude[j];
+      product += result.magnitude[i + j];
+      product += carry;
+
+      result.magnitude[i + j] = (uint64_t)(product & 0xFFFFFFFFFFFFFFFFULL);
+      carry = (uint64_t)(product >> 64);
+    }
+
+    result.magnitude[i + rhs.magnitude.size() ] += carry;
+  }
+
+  while (result.magnitude.size() > 1 && result.magnitude.back() == 0) {
+    result.magnitude.pop_back();
+  }
+
   result.sign = (sign != rhs.sign);   //XOR
+  return result;
 }
 
 // WL
