@@ -15,7 +15,7 @@ BigInt::BigInt(uint64_t val, bool negative)
 
 BigInt::BigInt(std::initializer_list<uint64_t> vals, bool negative)
   // TODO: initialize member variables
-  : magnitude{vals}, sign(negative)
+  : magnitude(vals), sign(negative)
 {
 }
 
@@ -157,15 +157,28 @@ BigInt BigInt::operator-(const BigInt &rhs) const
 BigInt BigInt::operator-() const
 {
   // TODO: implement
-  BigInt num = *this;
+  BigInt result = *this;
 
-  if(num.is_zero()) {
-    num.sign = false;
-  } else{
-    num.sign = !sign;
+  // weather 0 or not
+  bool allZero = true;
+  for (uint64_t word : result.magnitude) {
+    if (word != 0) {
+      allZero = false;
+      break;
+    }
   }
-  return num;
+
+  result.sign = allZero ? false : !sign;
+
+  //move 0UL from end to start
+  if (!result.magnitude.empty() && result.magnitude.back() == 0) {
+    result.magnitude.pop_back();                  
+    result.magnitude.insert(result.magnitude.begin(), 0); 
+  }
+
+  return result;
 }
+
 
 bool BigInt::is_bit_set(unsigned n) const
 {

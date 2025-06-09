@@ -338,6 +338,7 @@ void test_negate_1(TestObjs *objs){
   ASSERT(!result4.is_negative());
 }
 
+
 void test_negate_2(TestObjs *objs) {
   // harder tests for unary negation
   {
