@@ -106,6 +106,52 @@ BigInt BigInt::operator-(const BigInt &rhs) const
 {
   // TODO: implement
   // Hint: a - b could be computed as a + -b
+
+  //different sign
+  if (sign != rhs.sign) {
+    return *this + (-rhs); // a - (-b) or (-a) - b
+  }
+  
+  //same sign
+  BigInt result;
+  int compare_two = compare_magnitudes(*this, rhs);
+
+  const std::vector<uint64_t> *larger;
+  const std::vector<uint64_t> *smaller;
+  bool result_sign;
+
+  if (compare_two >= 0){
+    larger = &magnitude;
+    smaller = &rhs.magnitude;
+    result_sign = sign;
+  } else{
+    larger = &rhs.magnitude;
+    smaller = &magnitude;
+    result_sign = !sign;
+  }
+
+  uint64_t borrow = 0;
+  for (size_t i = 0; i < larger->size(); ++i){
+    uint64_t a = (*larger)[i];
+    uint64_t b = (i<smaller->size()) ? (*smaller)[i] : 0;
+
+    uint64_t sub;
+    if (a >= b + borrow) {
+      sub = a - b - borrow;
+      borrow = 0;
+    } else{
+      sub = (1ULL << 64) + a - b - borrow;
+      borrow = 1;
+    }
+    result.magnitude.push_back(sub);
+  }
+
+  while (result.magnitude.size() > 1 && result.magnitude.back() == 0) {
+    result.magnitude.pop_back();
+  }
+
+  result.sign = result.is_zero() ? false : result_sign;
+  return result;
 }
 
 BigInt BigInt::operator-() const
@@ -113,7 +159,8 @@ BigInt BigInt::operator-() const
   // TODO: implement
   BigInt num = *this;
 
-  if(num.magnitude.empty() || (num.magnitude.size() == 1 && num.magnitude[0] == 0)) {
+  if(num.is_zero()) {
+    num.sign = false;
     return num;
   }
   num.sign = !sign;
