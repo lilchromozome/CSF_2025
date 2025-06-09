@@ -196,15 +196,58 @@ BigInt BigInt::operator/(const BigInt &rhs) const
   if(rhs.is_zero()){
     throw std::invalid_argument("Divide by 0");
   } 
-  BigInt result;
-  // XOR for sign of division
-  if(sign ^ rhs.sign){ 
-    result.sign = true;
+
+  BigInt top = *this;
+  BigInt bottom = rhs;
+  top.sign = false;
+  bottom.sign = false;
+
+  BigInt min(0, false);
+  BigInt max = top;
+  BigInt mid;
+  BigInt product;
+
+  while (compare_magnitudes(min, max) <= 0) {
+    mid = (min + max).div_by_2();
+    product = mid * bottom;
+    
+    int cmp = compare_magnitudes(product, top);
+    if (cmp == 0) {
+      mid.sign = (sign != rhs.sign);
+      return mid;
+    } else if (cmp < 0) {     //top bigger
+      min = mid + BigInt(1, false);
+    } else {
+      max = mid - BigInt(1, false);
+    }
   }
 
-  
-
+  max.sign = (sign != rhs.sign);
+  return max;
 }
+
+BigInt BigInt::div_by_2() const {
+  BigInt result;
+  result.sign = sign;
+  result.magnitude.resize(magnitude.size(), 0);
+
+  uint64_t carry = 0;
+  for (size_t i = magnitude.size(); i-- > 0;) {
+    uint64_t current = magnitude[i];
+    result.magnitude[i] = (current >> 1) | (carry << 63);
+    carry = current & 1;
+  }
+
+  // remove leading zeroes
+  while (result.magnitude.size() > 1 && result.magnitude.back() == 0) {
+    result.magnitude.pop_back();
+  }
+
+  return result;
+}
+
+
+
 
 // WL
 int BigInt::compare(const BigInt &rhs) const
@@ -249,6 +292,7 @@ int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
   return 0;
 }
 
+// Returns length of vector without leading zeroes
 size_t BigInt::kill_leading_zeros(const std::vector<uint64_t> &vec) {
   size_t i = vec.size();
   while (i > 0 && vec[i - 1] == 0) {

@@ -59,6 +59,7 @@ void test_mul_2(TestObjs *objs);
 void test_compare_1(TestObjs *objs);
 void test_compare_2(TestObjs *objs);
 void test_compare_3(TestObjs *objs);
+void test_divby2(TestObjs *objs);
 void test_div_1(TestObjs *objs);
 void test_div_2(TestObjs *objs);
 void test_to_hex_1(TestObjs *objs);
@@ -99,6 +100,7 @@ int main(int argc, char **argv) {
   TEST(test_compare_1);
   TEST(test_compare_2);
   TEST(test_compare_3);
+  TEST(test_divby2);
   TEST(test_div_1);
   TEST(test_div_2);
   TEST(test_to_hex_1);
@@ -569,24 +571,41 @@ void test_compare_4(TestObjs *objs){
   ASSERT(objs->bigNum.compare(objs->bigNum_leading_zero) == 0);
 }
 
+void test_divby2(TestObjs *objs) {
+  BigInt result1 = objs->nine.div_by_2();
+  check_contents(result1, {4UL});
+  ASSERT(!result1.is_negative());
+
+  BigInt result2 = objs->zero.div_by_2();
+  check_contents(result2, {0UL});
+  ASSERT(!result2.is_negative());
+
+  BigInt result3 = objs->two_pow_64.div_by_2();
+  check_contents(result3, {1ULL << 63});
+  ASSERT(!result3.is_negative());
+}
 
 void test_div_1(TestObjs *objs) {
   // Some relatively basic division tests
 
   BigInt result1 = objs->nine / objs->three;
   check_contents(result1, { 3UL });
+  std::cout << "pass1" << std::endl;
   ASSERT(!result1.is_negative());
 
   BigInt result2 = objs->nine / objs->two;
   check_contents(result2, { 4UL });
+  std::cout << "pass2" << std::endl;
   ASSERT(!result2.is_negative());
 
   BigInt result3 = objs->negative_nine / objs->three;
   check_contents(result3, { 3UL });
+    std::cout << "pass3" << std::endl;
   ASSERT(result3.is_negative());
 
   BigInt result4 = objs->negative_nine / objs->two;
   check_contents(result4, { 4UL });
+  std::cout << "pass4" << std::endl;
   ASSERT(result4.is_negative());
 }
 

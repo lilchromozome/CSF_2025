@@ -155,6 +155,9 @@ public:
   //!        equal to 0
   BigInt operator/(const BigInt &rhs) const;
 
+  // Divide a BigInt by 2
+  BigInt div_by_2() const;
+
   //! Compare two BigInt values, returning
   //!   - negative if lhs < rhs
   //!   - 0 if lhs = rhs
