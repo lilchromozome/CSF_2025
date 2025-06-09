@@ -247,8 +247,6 @@ BigInt BigInt::div_by_2() const {
 }
 
 
-
-
 // WL
 int BigInt::compare(const BigInt &rhs) const
 {
