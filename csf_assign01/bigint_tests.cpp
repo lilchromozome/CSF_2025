@@ -67,6 +67,7 @@ void test_to_hex_2(TestObjs *objs);
 void test_to_hex_3(TestObjs *objs);
 void test_to_dec_1(TestObjs *objs);
 void test_to_dec_2(TestObjs *objs);
+void test_to_dec3(TestObjs *objs);
 // TODO: declare additional test functions
 
 int main(int argc, char **argv) {
@@ -108,6 +109,7 @@ int main(int argc, char **argv) {
   TEST(test_to_hex_3);
   TEST(test_to_dec_1);
   TEST(test_to_dec_2);
+  TEST(test_to_dec3);
   // TODO: add calls to TEST for additional test functions
 
   TEST_FINI();
@@ -127,9 +129,10 @@ TestObjs::TestObjs()
   , negative_nine(9UL, true)
   , negative_three(3UL, true)
   , nine(9UL)
+  // TODO: initialize additional test fixture objects
+
   , bigNum({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL})
   , bigNum_leading_zero({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL, 0x0UL})
-  // TODO: initialize additional test fixture objects
 {
 }
 
@@ -654,7 +657,7 @@ void test_to_hex_2(TestObjs *) {
   }
 }
 
-  void test_to_hex_3(TestObjs *objs) {
+void test_to_hex_3(TestObjs *objs) {
   // more tests for to_hex()
 
   std::string result1 = objs->bigNum.to_hex();
@@ -689,5 +692,16 @@ void test_to_dec_2(TestObjs *) {
     ASSERT("703527900324720116021349050368162523567079645895" == result);
   }
 }
+
+void test_to_dec3(TestObjs *objs) {
+  // Tests for to_dec()
+
+  std::string result1 = objs->bigNum.to_dec();
+  ASSERT("206716246505568250291373475155529895805448491241809515218991179210137903204944" == result1);
+
+  std::string result2 = objs->bigNum_leading_zero.to_dec();
+  ASSERT("206716246505568250291373475155529895805448491241809515218991179210137903204944" == result2);
+}
+
 
 // TODO: implement additional test functions

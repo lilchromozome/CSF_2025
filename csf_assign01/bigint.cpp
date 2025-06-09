@@ -183,10 +183,8 @@ BigInt BigInt::operator*(const BigInt &rhs) const
   if (is_zero() || rhs.is_zero()){
     return result;
   }
-  // XOR for sign of multiplication
-  if(sign ^ rhs.sign){ 
-    result.sign = true;
-  }
+
+  result.sign = (sign != rhs.sign);   //XOR
 }
 
 // WL
@@ -213,9 +211,9 @@ BigInt BigInt::operator/(const BigInt &rhs) const
     
     int cmp = compare_magnitudes(product, top);
     if (cmp == 0) {
-      mid.sign = (sign != rhs.sign);
+      mid.sign = (sign != rhs.sign);  //XOR
       return mid;
-    } else if (cmp < 0) {     //top bigger
+    } else if (cmp < 0) {     //top bigger than product
       min = mid + BigInt(1, false);
     } else {
       max = mid - BigInt(1, false);
@@ -344,6 +342,28 @@ std::string BigInt::to_hex() const
 std::string BigInt::to_dec() const
 {
   // TODO: implement
+  if (is_zero()) return 0;
+
+  std::stringstream digits;
+
+  BigInt num = *this;
+  num.sign = false;
+
+  BigInt divided = num;
+  BigInt remainder;
+
+  while(!divided.is_zero()){
+    divided = divided/10;
+    remainder = num - BigInt(10, false) * divided;
+    digits << std::to_string(remainder.magnitude[0]);
+  }
+
+  std::string output = digits.str();
+  std::reverse(output.begin(), output.end());
+
+  if(sign){
+    return "-" + output;
+  }
+  return output;
 
 }
-

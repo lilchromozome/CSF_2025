@@ -7,6 +7,8 @@
 #include <sstream>
 #include <iostream>
 #include <cstdint>
+#include <cstring>
+#include <algorithm>
 
 //! @file
 //! Arbitrary-precision integer data type.
@@ -123,9 +125,6 @@ public:
   //! @throw std::invalid_argument if this object represents a negative value
   BigInt operator<<(unsigned n) const;
 
-  // Helper to copy the first n bits of word
-  uint64_t copy_bits(uint64_t word, unsigned n = 64);
-
   //! Multiplication operator.
   //!
   //! @param rhs the right-hand side BigInt value (the left hand value
@@ -169,13 +168,6 @@ public:
   //!         0 means equal, positive means greater)
   int compare(const BigInt &rhs) const;
 
-  // Helper function to compare magnitudes
-  static int compare_magnitudes(const BigInt &lhs, const BigInt &rhs);
-
-  static size_t kill_leading_zeros(const std::vector<uint64_t> &vec);
-
-  // check if BigInt is equal to 0
-  bool is_zero() const;
 
   // comparison operators: you won't need to modify these,
   // since they're all implemented using compare
@@ -202,6 +194,20 @@ public:
 
 private:
   // TODO: add helper functions
+  std::string to_digit() const;
+
+  // check if BigInt is equal to 0
+  bool is_zero() const;
+
+  // Helper function to compare magnitudes
+  static int compare_magnitudes(const BigInt &lhs, const BigInt &rhs);
+
+  //  Helper to remove leading zeroes
+  static size_t kill_leading_zeros(const std::vector<uint64_t> &vec);
+
+  // Helper to copy the first n bits of word
+  uint64_t copy_bits(uint64_t word, unsigned n = 64);
+
 };
 
 #endif // BIGINT_H
