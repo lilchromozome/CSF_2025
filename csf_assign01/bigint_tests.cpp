@@ -439,18 +439,18 @@ void test_sub_1(TestObjs *objs) {
 
   BigInt result1 = objs->zero - objs->zero;
   check_contents(result1, { 0UL });
-  std::cout << "pass1" << std::endl;
+  // std::cout << "pass1" << std::endl;
   ASSERT(!result1.is_negative());
 
   BigInt result2 = objs->one - objs->zero;
   check_contents(result2, { 1UL });
-    std::cout << "pass2" << std::endl;
+    // std::cout << "pass2" << std::endl;
   ASSERT(!result2.is_negative());
 
   // 0 - 1 should be -1
   BigInt result3 = objs->zero - objs->one;
   check_contents(result3, { 1UL });
-  std::cout << "pass3" << std::endl;
+  // std::cout << "pass3" << std::endl;
   ASSERT(result3.is_negative());
 }
 
@@ -679,22 +679,22 @@ void test_div_1(TestObjs *objs) {
 
   BigInt result1 = objs->nine / objs->three;
   check_contents(result1, { 3UL });
-  std::cout << "pass1" << std::endl;
+  // std::cout << "pass1" << std::endl;
   ASSERT(!result1.is_negative());
 
   BigInt result2 = objs->nine / objs->two;
   check_contents(result2, { 4UL });
-  std::cout << "pass2" << std::endl;
+  // std::cout << "pass2" << std::endl;
   ASSERT(!result2.is_negative());
 
   BigInt result3 = objs->negative_nine / objs->three;
   check_contents(result3, { 3UL });
-    std::cout << "pass3" << std::endl;
+    // std::cout << "pass3" << std::endl;
   ASSERT(result3.is_negative());
 
   BigInt result4 = objs->negative_nine / objs->two;
   check_contents(result4, { 4UL });
-  std::cout << "pass4" << std::endl;
+  // std::cout << "pass4" << std::endl;
   ASSERT(result4.is_negative());
 }
 
@@ -710,13 +710,16 @@ void test_div_2(TestObjs *) {
       std::cout << (BigInt({0xfb3e6b02be39b6ceUL, 0x25UL}, false) * right).to_hex() << std::endl; 
 
     BigInt result = left / right;
-    std::cout << result.to_hex() << std::endl; 
+    // std::cout << result.to_hex() << std::endl; 
     check_contents(result, {0xfb3e6b02be39b6ceUL, 0x25UL});
     ASSERT(!result.is_negative());
   }
 }
-// cf97bc9cfb038910,cc4744bca7b83582,068187a6006d208569d0c6f14217c9e1927bafd7f37165b435194d7b9f3d03fe3985263c9a990a1d701fc6cef9798f28623bcd68a1230047ed1096774344025673114d0f8670c6d8767f592c4633fa02b2ae1e2;
-// cf97bc9cfb038910,d158d63ae2df81a8,4808054d623c2e8a460f5be48f52b428f255e1d3de679169dc897038b8bcb6df3f7291130302fb07ef81d25c8c47a8ab9cc20afbb47e519c0ffc3926bfd5cb9a0cfa40316bef383084c9bf55a1f7b06e95d205b;
+
+
+// cf97bc9cfb038910,cc4744bca7b83582068187a6006d208569d0c6f14217c9e1927bafd7f37165b435194d7b9f3d03fe3985263c9a990a1d701fc6cef9798f28623bcd68a1230047ed1096774344025673114d0f8670c6d8767f592c4633fa02b2ae1e2
+// cf97bc9cfb038910,d158d63ae2df81a84808054d623c2e8a460f5be48f52b428f255e1d3de679169dc897038b8bcb6df3f7291130302fb07ef81d25c8c47a8ab9cc20afbb47e519c0ffc3926bfd5cb9a0cfa40316bef383084c9bf55a1f7b06e95d205b
+
 
 void test_div_3(TestObjs *objs) {
   BigInt result1 = objs->one / objs->two;

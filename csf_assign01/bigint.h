@@ -10,6 +10,15 @@
 #include <cstring>
 #include <algorithm>
 
+
+#include <vector>        // for std::vector
+#include <cstdint>       // for uint64_t
+#include <string>        // for std::string
+#include <sstream>       // for std::stringstream
+#include <iomanip>       // for std::setw, std::setfill, std::hex
+#include <initializer_list> // for std::initializer_list
+
+
 //! @file
 //! Arbitrary-precision integer data type.
 

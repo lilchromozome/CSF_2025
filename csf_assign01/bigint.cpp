@@ -329,7 +329,7 @@ BigInt BigInt::operator/(const BigInt &rhs) const
     }
   }
 
-  std::cout << max.to_hex() << std::endl;
+  // std::cout << max.to_hex() << std::endl;
   max.sign = (sign != rhs.sign);
   return max;
 }
@@ -494,3 +494,4 @@ std::string BigInt::to_dec() const
   return output;
 
 }
+
