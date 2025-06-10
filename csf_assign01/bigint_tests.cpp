@@ -262,8 +262,8 @@ void test_initlist_ctor(TestObjs *objs) {
   check_contents(objs->negative_two_pow_64, { 0UL, 1UL });
   ASSERT(objs->negative_two_pow_64.is_negative());
 
-  check_contents(objs->bigNum_leading_zero, { 0UL, 0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL });
-  ASSERT(!objs->bigNum_leading_zero.is_negative());
+  check_contents(objs->bigNum, { 0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL });
+  ASSERT(!objs->bigNum.is_negative());
 }
 
 void test_copy_ctor(TestObjs *objs) {
@@ -647,22 +647,22 @@ void test_mul_3(TestObjs *objs) {
   // +*+
   BigInt result1 = objs->bigNum * objs->ten;
   std::string dec1 = result1.to_dec();
-  ASSERT("2067162465055682502913734751555298958054484912418095152189911792101379032049440" == dec1);
+  ASSERT("695055259840203864408396760792855195344319599815017059833213344876644446287200" == dec1);
 
   // -*+
   BigInt result2 = objs->neg_bigNum * objs->ten;
   std::string dec2 = result2.to_dec();
-  ASSERT("-2067162465055682502913734751555298958054484912418095152189911792101379032049440" == dec2);
+  ASSERT("-695055259840203864408396760792855195344319599815017059833213344876644446287200" == dec2);
 
   // +*-
   BigInt result3 = objs->ten * objs->neg_bigNum;
   std::string dec3 = result3.to_dec();
-  ASSERT("-2067162465055682502913734751555298958054484912418095152189911792101379032049440" == dec3);
+  ASSERT("-695055259840203864408396760792855195344319599815017059833213344876644446287200" == dec3);
 
   // -*-
   BigInt result4 = objs->neg_bigNum * objs->neg_bigNum;
   ASSERT(!result4.is_negative());
-  ASSERT(result4.compare(result4) == 0);  // Reflexive
+  ASSERT(result4.compare(result4) == 0);
 }
 
 void test_mul_4(TestObjs *objs) {
@@ -877,10 +877,13 @@ void test_to_dec3(TestObjs *objs) {
   // Tests for to_dec()
 
   std::string result1 = objs->bigNum.to_dec();
-  ASSERT("206716246505568250291373475155529895805448491241809515218991179210137903204944" == result1);
+  ASSERT("69505525984020386440839676079285519534431959981501705983321334487664444628720" == result1);
 
   std::string result2 = objs->bigNum_leading_zero.to_dec();
-  ASSERT("206716246505568250291373475155529895805448491241809515218991179210137903204944" == result2);
+  ASSERT("69505525984020386440839676079285519534431959981501705983321334487664444628720" == result2);
+
+  std::string result3 = objs->neg_bigNum.to_dec();
+  ASSERT("-69505525984020386440839676079285519534431959981501705983321334487664444628720" == result3);
 }
 
 void test_to_dec_4(TestObjs *objs) {

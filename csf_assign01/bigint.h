@@ -194,7 +194,14 @@ public:
 
 private:
   // TODO: add helper functions
+
+  //! Return a string representing for the value of a BigInt
+  //! in an unspecified digit format (implementation-dependent).
+  //! Intended for debugging or internal conversion helpers.
+  //!
+  //! @return a string representation of this BigInt's value
   std::string to_digit() const;
+
 
   // check if BigInt is equal to 0
   bool is_zero() const;
