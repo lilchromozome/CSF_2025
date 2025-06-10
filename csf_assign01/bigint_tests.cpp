@@ -71,6 +71,7 @@ void test_divby2(TestObjs *objs);
 void test_div_1(TestObjs *objs);
 void test_div_2(TestObjs *objs);
 void test_div_3(TestObjs *objs);
+void test_div_4(TestObjs *objs);
 void test_to_hex_1(TestObjs *objs);
 void test_to_hex_2(TestObjs *objs);
 void test_to_hex_3(TestObjs *objs);
@@ -81,7 +82,6 @@ void test_to_dec_4(TestObjs *objs);
 // TODO: declare additional test functions
 
 
-
 int main(int argc, char **argv) {
   if (argc > 1) {
     tctest_testname_to_execute = argv[1];
@@ -89,50 +89,64 @@ int main(int argc, char **argv) {
 
   TEST_INIT();
 
-  TEST(test_default_ctor);
-  TEST(test_u64_ctor);
-  TEST(test_initlist_ctor);
-  TEST(test_copy_ctor);
-  TEST(test_get_bits);
-  TEST(test_add_1);
-  TEST(test_add_2);
-  TEST(test_add_3);
-  TEST(test_add_4);
-  TEST(test_add_5);
-  TEST(test_add_6);
-  TEST(test_add_7);
-  TEST(test_negate_1);
-  TEST(test_negate_2);
-  TEST(test_sub_1);
-  TEST(test_sub_2);
-  TEST(test_sub_3);
-  TEST(test_sub_4);
-  TEST(test_is_bit_set_1);
-  TEST(test_is_bit_set_2);
-  TEST(test_lshift_1);
-  TEST(test_lshift_2);
-  TEST(test_lshift_3);
-  TEST(test_mul_1);
-  TEST(test_mul_2);
-  TEST(test_compare_1);
-  TEST(test_compare_2);
-  TEST(test_compare_3);
-  TEST(test_compare_4);
-  TEST(test_divby2);
-  TEST(test_div_1);
   TEST(test_div_2);
-  TEST(test_div_3);
-  TEST(test_to_hex_1);
-  TEST(test_to_hex_2);
-  TEST(test_to_hex_3);
-  TEST(test_to_dec_1);
-  TEST(test_to_dec_2);
-  TEST(test_to_dec3);
-  TEST(test_to_dec_4);
   // TODO: add calls to TEST for additional test functions
 
   TEST_FINI();
 }
+
+// int main(int argc, char **argv) {
+//   if (argc > 1) {
+//     tctest_testname_to_execute = argv[1];
+//   }
+
+//   TEST_INIT();
+
+//   TEST(test_default_ctor);
+//   TEST(test_u64_ctor);
+//   TEST(test_initlist_ctor);
+//   TEST(test_copy_ctor);
+//   TEST(test_get_bits);
+//   TEST(test_add_1);
+//   TEST(test_add_2);
+//   TEST(test_add_3);
+//   TEST(test_add_4);
+//   TEST(test_add_5);
+//   TEST(test_add_6);
+//   TEST(test_add_7);
+//   TEST(test_negate_1);
+//   TEST(test_negate_2);
+//   TEST(test_sub_1);
+//   TEST(test_sub_2);
+//   TEST(test_sub_3);
+//   TEST(test_sub_4);
+//   TEST(test_is_bit_set_1);
+//   TEST(test_is_bit_set_2);
+//   TEST(test_lshift_1);
+//   TEST(test_lshift_2);
+//   TEST(test_lshift_3);
+//   TEST(test_mul_1);
+//   TEST(test_mul_2);
+//   TEST(test_compare_1);
+//   TEST(test_compare_2);
+//   TEST(test_compare_3);
+//   TEST(test_compare_4);
+//   TEST(test_divby2);
+//   TEST(test_div_1);
+//   TEST(test_div_2);
+//   TEST(test_div_3);
+//   TEST(test_div_4);
+//   TEST(test_to_hex_1);
+//   TEST(test_to_hex_2);
+//   TEST(test_to_hex_3);
+//   TEST(test_to_dec_1);
+//   TEST(test_to_dec_2);
+//   TEST(test_to_dec3);
+//   TEST(test_to_dec_4);
+//   // TODO: add calls to TEST for additional test functions
+
+//   TEST_FINI();
+// }
 
 
 // All initialization of test fixture objects should be done
@@ -422,15 +436,18 @@ void test_sub_1(TestObjs *objs) {
 
   BigInt result1 = objs->zero - objs->zero;
   check_contents(result1, { 0UL });
+  std::cout << "pass1" << std::endl;
   ASSERT(!result1.is_negative());
 
   BigInt result2 = objs->one - objs->zero;
   check_contents(result2, { 1UL });
+    std::cout << "pass2" << std::endl;
   ASSERT(!result2.is_negative());
 
   // 0 - 1 should be -1
   BigInt result3 = objs->zero - objs->one;
   check_contents(result3, { 1UL });
+  std::cout << "pass3" << std::endl;
   ASSERT(result3.is_negative());
 }
 
@@ -699,6 +716,15 @@ void test_div_3(TestObjs *objs) {
   BigInt result2 = objs->negative_nine / objs->nine;
   check_contents(result2, {1UL});
   ASSERT(result2.is_negative());
+}
+
+void test_div_4(TestObjs *objs) {
+  BigInt left({0xFFFFFFFFFFFFFFFFUL, 0x1UL}, false);
+  BigInt result1 = left / 0xFFFFFFFFFFFFFFFFUL;
+  std::cout << left.to_hex() << std::endl; 
+  std::cout << result1.to_hex() << std::endl; 
+  check_contents(result1, {2UL});
+  ASSERT(!result1.is_negative());
 }
 
 void test_to_hex_1(TestObjs *objs) {

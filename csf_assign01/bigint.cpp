@@ -109,6 +109,10 @@ BigInt BigInt::operator-(const BigInt &rhs) const
   // TODO: implement
   // Hint: a - b could be computed as a + -b
 
+  if(is_zero()) return -rhs;
+
+  if(rhs.is_zero()) return *this;
+
   //different sign, can convert as addition
   if (sign != rhs.sign) {
     return *this + (-rhs); // a - (-b) or (-a) - b
@@ -163,24 +167,28 @@ BigInt BigInt::operator-(const BigInt &rhs) const
 BigInt BigInt::operator-() const
 {
   // TODO: implement
+  if(is_zero()){
+    return *this;
+  }
   BigInt result = *this;
+  result.sign = !sign;
 
-  // weather 0 or not
-  bool allZero = true;
-  for (uint64_t word : result.magnitude) {
-    if (word != 0) {
-      allZero = false;
-      break;
-    }
-  }
+  // // weather 0 or not
+  // bool allZero = true;
+  // for (uint64_t word : result.magnitude) {
+  //   if (word != 0) {
+  //     allZero = false;
+  //     break;
+  //   }
+  // }
 
-  result.sign = allZero ? false : !sign;
+  // result.sign = allZero ? false : !sign;
 
-  //move 0UL from end to start
-  if (!result.magnitude.empty() && result.magnitude.back() == 0) {
-    result.magnitude.pop_back();                  
-    result.magnitude.insert(result.magnitude.begin(), 0); 
-  }
+  // //move 0UL from end to start
+  // if (!result.magnitude.empty() && result.magnitude.back() == 0) {
+  //   result.magnitude.pop_back();                  
+  //   result.magnitude.insert(result.magnitude.begin(), 0); 
+  // }
 
   return result;
 }
@@ -292,11 +300,22 @@ BigInt BigInt::operator/(const BigInt &rhs) const
   BigInt mid;
   BigInt product;
 
+  bool first = true;
+
   while (compare_magnitudes(min, max) <= 0) {
     mid = (min + max).div_by_2();
     product = mid * bottom;
     
     int cmp = compare_magnitudes(product, top);
+
+    if(first){
+      std::cout << "min: " << min.to_hex() << std::endl; 
+      std::cout << "mid: " << mid.to_hex() << std::endl; 
+      std::cout << "max: " << max.to_hex() << std::endl; 
+      std::cout << "cmp: " << cmp << std::endl; 
+      first = false;
+    }
+
     if (cmp == 0) {
       mid.sign = (sign != rhs.sign);  //XOR
       // std::cout << mid.to_hex() << std::endl;
@@ -308,10 +327,11 @@ BigInt BigInt::operator/(const BigInt &rhs) const
     }
   }
 
-  // std::cout << max.to_hex() << std::endl;
+  std::cout << max.to_hex() << std::endl;
   max.sign = (sign != rhs.sign);
   return max;
 }
+
 
 BigInt BigInt::div_by_2() const {
   BigInt result;
@@ -345,7 +365,7 @@ int BigInt::compare(const BigInt &rhs) const
 
   // compare signs
   if(is_negative()){
-    if (rhs.sign)
+    if (rhs.is_negative())
     {
       return compare_magnitudes(*this, rhs);
     } else return -1;
@@ -356,6 +376,25 @@ int BigInt::compare(const BigInt &rhs) const
   } 
 }
 
+// int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
+
+//   const auto &left = lhs.magnitude;
+//   const auto &right = rhs.magnitude;
+
+//   size_t left_size = kill_leading_zeros(left);
+//   size_t right_size = kill_leading_zeros(right);
+
+//   // Diff length
+//   if (left_size > right_size) return 1;
+//   if (left_size < right_size) return -1;
+
+//   // Same length
+//   for (size_t i = left_size; i-- > 0;) {
+//     return left[i] - right[i];
+//   }
+
+//   return 0;
+// }
 
 int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
 
@@ -369,13 +408,16 @@ int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
   if (left_size > right_size) return 1;
   if (left_size < right_size) return -1;
 
-  // Same length
-  for (size_t i = left_size; i-- > 0;) {
-    return left[i] - right[i];
+  for (auto i = left_size-1; i > 0; --i){
+    uint64_t lword = left[i];
+    uint64_t rword = right[i];
+    if(lword > rword) return 1;
+    if(rword < lword) return -1;
   }
 
   return 0;
 }
+
 
 // Returns length of vector without leading zeroes
 size_t BigInt::kill_leading_zeros(const std::vector<uint64_t> &vec) {
