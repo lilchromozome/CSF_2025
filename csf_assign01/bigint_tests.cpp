@@ -15,9 +15,12 @@ struct TestObjs {
   BigInt negative_nine;
   BigInt negative_three;
   BigInt nine;
+  // TODO: add additional test fixture objects
+
   BigInt bigNum;
   BigInt bigNum_leading_zero;
-  // TODO: add additional test fixture objects
+  BigInt neg_zero;
+  BigInt neg_bigNum; 
 
   TestObjs();
 };
@@ -57,21 +60,27 @@ void test_is_bit_set_1(TestObjs *objs);
 void test_is_bit_set_2(TestObjs *objs);
 void test_lshift_1(TestObjs *objs);
 void test_lshift_2(TestObjs *objs);
+void test_lshift_3(TestObjs *objs);
 void test_mul_1(TestObjs *objs);
 void test_mul_2(TestObjs *objs);
 void test_compare_1(TestObjs *objs);
 void test_compare_2(TestObjs *objs);
 void test_compare_3(TestObjs *objs);
+void test_compare_4(TestObjs *objs);
 void test_divby2(TestObjs *objs);
 void test_div_1(TestObjs *objs);
 void test_div_2(TestObjs *objs);
+void test_div_3(TestObjs *objs);
 void test_to_hex_1(TestObjs *objs);
 void test_to_hex_2(TestObjs *objs);
 void test_to_hex_3(TestObjs *objs);
 void test_to_dec_1(TestObjs *objs);
 void test_to_dec_2(TestObjs *objs);
 void test_to_dec3(TestObjs *objs);
+void test_to_dec_4(TestObjs *objs);
 // TODO: declare additional test functions
+
+
 
 int main(int argc, char **argv) {
   if (argc > 1) {
@@ -102,20 +111,24 @@ int main(int argc, char **argv) {
   TEST(test_is_bit_set_2);
   TEST(test_lshift_1);
   TEST(test_lshift_2);
+  TEST(test_lshift_3);
   TEST(test_mul_1);
   TEST(test_mul_2);
   TEST(test_compare_1);
   TEST(test_compare_2);
   TEST(test_compare_3);
+  TEST(test_compare_4);
   TEST(test_divby2);
   TEST(test_div_1);
   TEST(test_div_2);
+  TEST(test_div_3);
   TEST(test_to_hex_1);
   TEST(test_to_hex_2);
   TEST(test_to_hex_3);
   TEST(test_to_dec_1);
   TEST(test_to_dec_2);
   TEST(test_to_dec3);
+  TEST(test_to_dec_4);
   // TODO: add calls to TEST for additional test functions
 
   TEST_FINI();
@@ -139,6 +152,8 @@ TestObjs::TestObjs()
 
   , bigNum({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL})
   , bigNum_leading_zero({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL, 0x0UL})
+  , neg_zero(0UL, true)
+  , neg_bigNum(-bigNum)
 {
 }
 
@@ -554,6 +569,16 @@ void test_lshift_2(TestObjs *) {
   }
 }
 
+void test_lshift_3(TestObjs *objs) {
+  BigInt result = objs->bigNum << 0;
+  ASSERT(0 == result.compare(objs->bigNum));
+
+  // shifting zero stays zero
+  BigInt z = objs->zero << 37;
+  check_contents(z, {0UL});
+  ASSERT(!z.is_negative());
+}
+
 void test_mul_1(TestObjs *objs) {
   // some very basic multiplication tests
 
@@ -611,6 +636,8 @@ void test_compare_3(TestObjs *objs){
 void test_compare_4(TestObjs *objs){
   // test for empty BigInt
   ASSERT(objs->bigNum.compare(objs->bigNum_leading_zero) == 0);
+  ASSERT(0 == objs->zero.compare(objs->neg_zero));
+  ASSERT(0 == objs->neg_zero.compare(objs->zero));
 }
 
 void test_divby2(TestObjs *objs) {
@@ -662,6 +689,16 @@ void test_div_2(TestObjs *) {
     check_contents(result, {0xfb3e6b02be39b6ceUL, 0x25UL});
     ASSERT(!result.is_negative());
   }
+}
+
+void test_div_3(TestObjs *objs) {
+  BigInt result1 = objs->one / objs->two;
+  check_contents(result1, {0UL});
+  ASSERT(!result1.is_negative());
+
+  BigInt result2 = objs->negative_nine / objs->nine;
+  check_contents(result2, {1UL});
+  ASSERT(result2.is_negative());
 }
 
 void test_to_hex_1(TestObjs *objs) {
@@ -741,6 +778,12 @@ void test_to_dec3(TestObjs *objs) {
 
   std::string result2 = objs->bigNum_leading_zero.to_dec();
   ASSERT("206716246505568250291373475155529895805448491241809515218991179210137903204944" == result2);
+}
+
+void test_to_dec_4(TestObjs *objs) {
+  std::string pos = objs->bigNum.to_dec();
+  std::string neg = objs->neg_bigNum.to_dec();
+  ASSERT(("-" + pos) == neg);
 }
 
 
