@@ -44,6 +44,9 @@ void test_add_1(TestObjs *objs);
 void test_add_2(TestObjs *objs);
 void test_add_3(TestObjs *objs);
 void test_add_4(TestObjs *objs);
+void test_add_5(TestObjs *objs);
+void test_add_6(TestObjs *objs);
+void test_add_7(TestObjs *objs);
 void test_negate_1(TestObjs *objs);
 void test_negate_2(TestObjs *objs);
 void test_sub_1(TestObjs *objs);
@@ -86,6 +89,9 @@ int main(int argc, char **argv) {
   TEST(test_add_2);
   TEST(test_add_3);
   TEST(test_add_4);
+  TEST(test_add_5);
+  TEST(test_add_6);
+  TEST(test_add_7);
   TEST(test_negate_1);
   TEST(test_negate_2);
   TEST(test_sub_1);
@@ -317,6 +323,38 @@ void test_add_4(TestObjs *) {
     ASSERT(result.is_negative());
   }
 
+}
+
+void test_add_5(TestObjs *objs){
+  // a+(-a) = 0
+  BigInt result1 = objs->three + objs->negative_three;
+  check_contents(result1, { 0UL });
+  ASSERT(!result1.is_negative());
+
+  // (-a) + a = 0
+  BigInt result2 = objs->negative_three + objs->three;
+  check_contents(result2, { 0UL });
+  ASSERT(!result2.is_negative());
+}
+
+void test_add_6(TestObjs *objs){
+  //0xFFFFFFFFFFFFF + 1 should be a vector which all zero + one.
+  BigInt a({0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL, 0xFFFFFFFFFFFFFFFFUL});
+  BigInt b(1UL);
+
+  BigInt result = a + b;
+
+  check_contents(result, {0UL, 0UL, 0UL, 1UL});
+  ASSERT(!result.is_negative());
+}
+
+void test_add_7(TestObjs *objs){
+  BigInt a({0x1234567UL, 0x0UL});
+  BigInt b(1UL);
+
+  BigInt result = a + b;
+  check_contents(result, {0x1234568UL, 0x0UL});
+  ASSERT(!result.is_negative());
 }
 
 void test_negate_1(TestObjs *objs){
