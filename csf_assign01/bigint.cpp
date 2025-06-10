@@ -369,7 +369,7 @@ int BigInt::compare(const BigInt &rhs) const
   if(is_negative()){
     if (rhs.is_negative())
     {
-      return compare_magnitudes(*this, rhs);
+      return -compare_magnitudes(*this, rhs);
     } else return -1;
   } else {
     if(!rhs.is_negative()){
@@ -399,24 +399,18 @@ int BigInt::compare(const BigInt &rhs) const
 // }
 
 int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
-
   const auto &left = lhs.magnitude;
   const auto &right = rhs.magnitude;
-
   size_t left_size = kill_leading_zeros(left);
   size_t right_size = kill_leading_zeros(right);
-
   // Diff length
   if (left_size > right_size) return 1;
   if (left_size < right_size) return -1;
-
-  for (auto i = left_size-1; i > 0; --i){
-    uint64_t lword = left[i];
-    uint64_t rword = right[i];
-    if(lword > rword) return 1;
-    if(rword < lword) return -1;
+  // Same length
+  for (size_t i = left_size; i-- > 0;) {
+    if (left[i] < right[i]) return -1;
+    if (left[i] > right[i]) return 1;
   }
-
   return 0;
 }
 
