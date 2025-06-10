@@ -216,7 +216,6 @@ BigInt BigInt::operator<<(unsigned n) const
   result.sign = false;
 
   //  shift bits
-  unsigned int word_count = words_shifted;
   for (size_t i = 0; i < magnitude.size(); ++i) {
     uint64_t word = magnitude[i];
     result.magnitude[words_shifted + i] |= (word << bits_shifted) | buffer;
@@ -238,7 +237,6 @@ BigInt BigInt::operator<<(unsigned n) const
 // Helper to copy the first n bits of word
 uint64_t BigInt::copy_bits(uint64_t word, unsigned n){
   if (n >= 64) return word;
-  uint64_t copied = 0;
   return word & ((1ULL << n) - 1);
 }
 
@@ -301,6 +299,7 @@ BigInt BigInt::operator/(const BigInt &rhs) const
     int cmp = compare_magnitudes(product, top);
     if (cmp == 0) {
       mid.sign = (sign != rhs.sign);  //XOR
+      std::cout << mid.to_hex() << std::endl;
       return mid;
     } else if (cmp < 0) {     //top bigger than product
       min = mid + BigInt(1, false);
@@ -309,6 +308,7 @@ BigInt BigInt::operator/(const BigInt &rhs) const
     }
   }
 
+  std::cout << max.to_hex() << std::endl;
   max.sign = (sign != rhs.sign);
   return max;
 }
