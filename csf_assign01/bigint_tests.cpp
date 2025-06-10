@@ -82,19 +82,6 @@ void test_to_dec_4(TestObjs *objs);
 // TODO: declare additional test functions
 
 
-int main(int argc, char **argv) {
-  if (argc > 1) {
-    tctest_testname_to_execute = argv[1];
-  }
-
-  TEST_INIT();
-
-  TEST(test_div_2);
-  // TODO: add calls to TEST for additional test functions
-
-  TEST_FINI();
-}
-
 // int main(int argc, char **argv) {
 //   if (argc > 1) {
 //     tctest_testname_to_execute = argv[1];
@@ -102,51 +89,64 @@ int main(int argc, char **argv) {
 
 //   TEST_INIT();
 
-//   TEST(test_default_ctor);
-//   TEST(test_u64_ctor);
-//   TEST(test_initlist_ctor);
-//   TEST(test_copy_ctor);
-//   TEST(test_get_bits);
-//   TEST(test_add_1);
-//   TEST(test_add_2);
-//   TEST(test_add_3);
-//   TEST(test_add_4);
-//   TEST(test_add_5);
-//   TEST(test_add_6);
-//   TEST(test_add_7);
-//   TEST(test_negate_1);
-//   TEST(test_negate_2);
-//   TEST(test_sub_1);
-//   TEST(test_sub_2);
-//   TEST(test_sub_3);
-//   TEST(test_sub_4);
-//   TEST(test_is_bit_set_1);
-//   TEST(test_is_bit_set_2);
-//   TEST(test_lshift_1);
-//   TEST(test_lshift_2);
-//   TEST(test_lshift_3);
-//   TEST(test_mul_1);
-//   TEST(test_mul_2);
-//   TEST(test_compare_1);
-//   TEST(test_compare_2);
-//   TEST(test_compare_3);
-//   TEST(test_compare_4);
-//   TEST(test_divby2);
-//   TEST(test_div_1);
 //   TEST(test_div_2);
-//   TEST(test_div_3);
-//   TEST(test_div_4);
-//   TEST(test_to_hex_1);
-//   TEST(test_to_hex_2);
-//   TEST(test_to_hex_3);
-//   TEST(test_to_dec_1);
-//   TEST(test_to_dec_2);
-//   TEST(test_to_dec3);
-//   TEST(test_to_dec_4);
 //   // TODO: add calls to TEST for additional test functions
 
 //   TEST_FINI();
 // }
+
+int main(int argc, char **argv) {
+  if (argc > 1) {
+    tctest_testname_to_execute = argv[1];
+  }
+
+  TEST_INIT();
+
+  TEST(test_default_ctor);
+  TEST(test_u64_ctor);
+  TEST(test_initlist_ctor);
+  TEST(test_copy_ctor);
+  TEST(test_get_bits);
+  TEST(test_add_1);
+  TEST(test_add_2);
+  TEST(test_add_3);
+  TEST(test_add_4);
+  TEST(test_add_5);
+  TEST(test_add_6);
+  TEST(test_add_7);
+  TEST(test_negate_1);
+  TEST(test_negate_2);
+  TEST(test_sub_1);
+  TEST(test_sub_2);
+  TEST(test_sub_3);
+  TEST(test_sub_4);
+  TEST(test_is_bit_set_1);
+  TEST(test_is_bit_set_2);
+  TEST(test_lshift_1);
+  TEST(test_lshift_2);
+  TEST(test_lshift_3);
+  TEST(test_mul_1);
+  TEST(test_mul_2);
+  TEST(test_compare_1);
+  TEST(test_compare_2);
+  TEST(test_compare_3);
+  TEST(test_compare_4);
+  TEST(test_divby2);
+  TEST(test_div_1);
+  TEST(test_div_2);
+  TEST(test_div_3);
+  TEST(test_div_4);
+  TEST(test_to_hex_1);
+  TEST(test_to_hex_2);
+  TEST(test_to_hex_3);
+  TEST(test_to_dec_1);
+  TEST(test_to_dec_2);
+  TEST(test_to_dec3);
+  TEST(test_to_dec_4);
+  // TODO: add calls to TEST for additional test functions
+
+  TEST_FINI();
+}
 
 
 // All initialization of test fixture objects should be done
@@ -254,9 +254,10 @@ void test_u64_ctor(TestObjs *objs) {
 
   check_contents(objs->nine, { 9UL });
   ASSERT(!objs->nine.is_negative());
-
+  
   check_contents(objs->bigNum, { 0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL });
   ASSERT(!objs->bigNum.is_negative());
+  
 }
 
 void test_initlist_ctor(TestObjs *objs) {
@@ -327,10 +328,12 @@ void test_add_3(TestObjs *objs) {
 
   BigInt result1 = objs->three + objs->negative_nine;
   check_contents(result1, { 6UL });
+  std::cout << result1.to_hex() << std::endl;
   ASSERT(result1.is_negative());
 
   BigInt result2 = objs->negative_nine + objs->three;
   check_contents(result2, { 6UL });
+  std::cout << result2.to_hex() << std::endl;
   ASSERT(result2.is_negative());
 }
 
@@ -699,14 +702,21 @@ void test_div_2(TestObjs *) {
   // harder division test(s) with larger values
 
   {
-    BigInt left({0x5a1f7b06e95d205bUL, 0x16bef383084c9bf5UL, 0x6bfd5cb9a0cfa403UL, 0xbb47e519c0ffc392UL, 0xc8c47a8ab9cc20afUL, 0x30302fb07ef81d25UL, 0x8b8bcb6df3f72911UL, 0x3de679169dc89703UL, 0x48f52b428f255e1dUL, 0xd623c2e8a460f5beUL, 0xae2df81a84808054UL, 0xcfb038910d158d63UL, 0xcf97bc9UL});
-    BigInt right({0xe1d191b09fd571e7UL, 0xd6e34973337d88fdUL, 0x7235628c33211b03UL, 0xe0bbc74b5d7fe26aUL, 0xf6242ed96eb2c8d9UL, 0x3b0cad8e5dd18f5UL, 0x558c283a839910c0UL, 0xbb4df9de72952652UL, 0xed8b519e3c63ce56UL, 0xe96f9c8454bde1c4UL, 0x76b62db592951f97UL, 0x577341UL});
+    BigInt left({0x5a1f7b06e95d205bUL, 0x16bef383084c9bf5UL, 0x6bfd5cb9a0cfa403UL, 0xbb47e519c0ffc392UL, 0xc8c47a8ab9cc20afUL, 0x30302fb07ef81d25UL, 
+      0x8b8bcb6df3f72911UL, 0x3de679169dc89703UL, 0x48f52b428f255e1dUL, 0xd623c2e8a460f5beUL, 0xae2df81a84808054UL, 0xcfb038910d158d63UL, 0xcf97bc9UL});
+    BigInt right({0xe1d191b09fd571e7UL, 0xd6e34973337d88fdUL, 0x7235628c33211b03UL, 0xe0bbc74b5d7fe26aUL, 0xf6242ed96eb2c8d9UL, 0x3b0cad8e5dd18f5UL, 
+      0x558c283a839910c0UL, 0xbb4df9de72952652UL, 0xed8b519e3c63ce56UL, 0xe96f9c8454bde1c4UL, 0x76b62db592951f97UL, 0x577341UL});
+
+      std::cout << (BigInt({0xfb3e6b02be39b6ceUL, 0x25UL}, false) * right).to_hex() << std::endl; 
+
     BigInt result = left / right;
     std::cout << result.to_hex() << std::endl; 
     check_contents(result, {0xfb3e6b02be39b6ceUL, 0x25UL});
     ASSERT(!result.is_negative());
   }
 }
+// cf97bc9cfb038910,cc4744bca7b83582,068187a6006d208569d0c6f14217c9e1927bafd7f37165b435194d7b9f3d03fe3985263c9a990a1d701fc6cef9798f28623bcd68a1230047ed1096774344025673114d0f8670c6d8767f592c4633fa02b2ae1e2;
+// cf97bc9cfb038910,d158d63ae2df81a8,4808054d623c2e8a460f5be48f52b428f255e1d3de679169dc897038b8bcb6df3f7291130302fb07ef81d25c8c47a8ab9cc20afbb47e519c0ffc3926bfd5cb9a0cfa40316bef383084c9bf55a1f7b06e95d205b;
 
 void test_div_3(TestObjs *objs) {
   BigInt result1 = objs->one / objs->two;
