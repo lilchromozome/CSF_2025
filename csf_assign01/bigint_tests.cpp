@@ -20,7 +20,8 @@ struct TestObjs {
   BigInt bigNum;
   BigInt bigNum_leading_zero;
   BigInt neg_zero;
-  BigInt neg_bigNum; 
+  BigInt neg_bigNum;
+  BigInt ten; 
 
   TestObjs();
 };
@@ -63,6 +64,8 @@ void test_lshift_2(TestObjs *objs);
 void test_lshift_3(TestObjs *objs);
 void test_mul_1(TestObjs *objs);
 void test_mul_2(TestObjs *objs);
+void test_mul_3(TestObjs *objs);
+void test_mul_4(TestObjs *objs);
 void test_compare_1(TestObjs *objs);
 void test_compare_2(TestObjs *objs);
 void test_compare_3(TestObjs *objs);
@@ -81,19 +84,6 @@ void test_to_dec3(TestObjs *objs);
 void test_to_dec_4(TestObjs *objs);
 // TODO: declare additional test functions
 
-
-// int main(int argc, char **argv) {
-//   if (argc > 1) {
-//     tctest_testname_to_execute = argv[1];
-//   }
-
-//   TEST_INIT();
-
-//   TEST(test_div_2);
-//   // TODO: add calls to TEST for additional test functions
-
-//   TEST_FINI();
-// }
 
 int main(int argc, char **argv) {
   if (argc > 1) {
@@ -127,6 +117,8 @@ int main(int argc, char **argv) {
   TEST(test_lshift_3);
   TEST(test_mul_1);
   TEST(test_mul_2);
+  TEST(test_mul_3);
+  TEST(test_mul_4);
   TEST(test_compare_1);
   TEST(test_compare_2);
   TEST(test_compare_3);
@@ -168,6 +160,7 @@ TestObjs::TestObjs()
   , bigNum_leading_zero({0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL, 0x0UL})
   , neg_zero(0UL, true)
   , neg_bigNum(-bigNum)
+  , ten(10UL)
 {
 }
 
@@ -626,6 +619,50 @@ void test_mul_2(TestObjs *) {
     ASSERT(!result.is_negative());
   }
 }
+
+void test_mul_3(TestObjs *objs) {
+  // +*+
+  BigInt result1 = objs->bigNum * objs->ten;
+  std::string dec1 = result1.to_dec();
+  ASSERT("2067162465055682502913734751555298958054484912418095152189911792101379032049440" == dec1);
+
+  // -*+
+  BigInt result2 = objs->neg_bigNum * objs->ten;
+  std::string dec2 = result2.to_dec();
+  ASSERT("-2067162465055682502913734751555298958054484912418095152189911792101379032049440" == dec2);
+
+  // +*-
+  BigInt result3 = objs->ten * objs->neg_bigNum;
+  std::string dec3 = result3.to_dec();
+  ASSERT("-2067162465055682502913734751555298958054484912418095152189911792101379032049440" == dec3);
+
+  // -*-
+  BigInt result4 = objs->neg_bigNum * objs->neg_bigNum;
+  ASSERT(!result4.is_negative());
+  ASSERT(result4.compare(result4) == 0);  // Reflexive
+}
+
+void test_mul_4(TestObjs *objs) {
+  // bigNum_leading_zero * 1 → should equal bigNum
+  BigInt result1 = objs->bigNum_leading_zero * objs->one;
+  ASSERT(result1.compare(objs->bigNum) == 0);
+
+  // bigNum_leading_zero * 0 → should be 0
+  BigInt result2 = objs->bigNum_leading_zero * objs->zero;
+  check_contents(result2, {0UL});
+  ASSERT(!result2.is_negative());
+
+  // bigNum_leading_zero * neg_zero → should also be 0 (but not negative)
+  BigInt result3 = objs->bigNum_leading_zero * objs->neg_zero;
+  check_contents(result3, {0UL});
+  ASSERT(!result3.is_negative());
+
+  // neg_zero * neg_zero → still 0
+  BigInt result4 = objs->neg_zero * objs->neg_zero;
+  check_contents(result4, {0UL});
+  ASSERT(!result4.is_negative());
+}
+
 
 void test_compare_1(TestObjs *objs) {
   // some basic tests for compare

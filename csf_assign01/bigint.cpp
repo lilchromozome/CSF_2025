@@ -310,17 +310,9 @@ BigInt BigInt::operator/(const BigInt &rhs) const
     
     int cmp = compare_magnitudes(product, top);
 
-    if(first){
-      std::cout << "min: " << min.to_hex() << std::endl; 
-      std::cout << "mid: " << mid.to_hex() << std::endl; 
-      std::cout << "max: " << max.to_hex() << std::endl; 
-      std::cout << "cmp: " << cmp << std::endl; 
-      first = false;
-    }
 
     if (cmp == 0) {
       mid.sign = (sign != rhs.sign);  //XOR
-      // std::cout << mid.to_hex() << std::endl;
       return mid;
     } else if (cmp < 0) {     //top bigger than product
       min = mid + BigInt(1, false);
@@ -329,7 +321,7 @@ BigInt BigInt::operator/(const BigInt &rhs) const
     }
   }
 
-  // std::cout << max.to_hex() << std::endl;
+
   max.sign = (sign != rhs.sign);
   return max;
 }
