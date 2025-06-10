@@ -195,25 +195,27 @@ public:
 private:
   // TODO: add helper functions
 
-  //! Return a string representing for the value of a BigInt
-  //! in an unspecified digit format (implementation-dependent).
-  //! Intended for debugging or internal conversion helpers.
+  //! Determine if a BigInt is equal to zero.
   //!
-  //! @return a string representation of this BigInt's value
-  std::string to_digit() const;
-
-
-  // check if BigInt is equal to 0
+  //! @return true if this BigInt is exactly zero; false otherwise
   bool is_zero() const;
 
-  // Helper function to compare magnitudes
+
+  //! Compare the magnitudes of two BigInt values, ignore signs
+  //!
+  //! @param lhs the left-hand BigInt
+  //! @param rhs the right-hand BigInt
+  //! @return negative if lhs < rhs, 0 if lhs == rhs, positive if lhs > rhs
   static int compare_magnitudes(const BigInt &lhs, const BigInt &rhs);
 
-  //  Helper to remove leading zeroes
+
+  //! Compute the nonzero words in the magnitude vector by ignoring any trailing zero words
+  //!
+  //! @param vec magnitude vector of uint64_t words representing a magnitude
+  //! @return the number of non-zero words
   static size_t kill_leading_zeros(const std::vector<uint64_t> &vec);
 
-  // Helper to copy the first n bits of word
-  uint64_t copy_bits(uint64_t word, unsigned n = 64);
+
 
 };
 

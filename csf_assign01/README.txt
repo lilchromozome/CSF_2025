@@ -6,6 +6,8 @@ Sichen Deng
 
 In the hexcode implementation I used bitwise operators by & 0b1111 to get a chunk that could be converted easily into a base16 value.
 
+We implemented the subtraction operation first before the addition operation so + is negation of -
+
 William functions and corresponding tests:
 constructors
 destructor
