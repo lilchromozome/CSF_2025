@@ -469,20 +469,20 @@ std::string BigInt::to_hex() const
 std::string BigInt::to_dec() const
 {
   // TODO: implement
-  if (is_zero()) return 0;
+  if (is_zero()) return "0";
 
   std::stringstream digits;
 
   BigInt num = *this;
   num.sign = false;
 
-  BigInt divided = num;
-  BigInt remainder;
-
-  while(!divided.is_zero()){
-    divided = divided/10;
-    remainder = num - BigInt(10, false) * divided;
+  BigInt ten(10,false);
+  
+  while (!num.is_zero()){
+    BigInt ans = num / ten;
+    BigInt remainder = num - ans * ten;
     digits << std::to_string(remainder.magnitude[0]);
+    num = ans;
   }
 
   std::string output = digits.str();
