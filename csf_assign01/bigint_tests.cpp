@@ -76,6 +76,7 @@ void test_div_1(TestObjs *objs);
 void test_div_2(TestObjs *objs);
 void test_div_3(TestObjs *objs);
 void test_div_4(TestObjs *objs);
+void test_div_5(TestObjs *objs);
 void test_to_hex_1(TestObjs *objs);
 void test_to_hex_2(TestObjs *objs);
 void test_to_hex_3(TestObjs *objs);
@@ -130,6 +131,7 @@ int main(int argc, char **argv) {
   TEST(test_div_2);
   TEST(test_div_3);
   TEST(test_div_4);
+  TEST(test_div_5);
   TEST(test_to_hex_1);
   TEST(test_to_hex_2);
   TEST(test_to_hex_3);
@@ -137,6 +139,7 @@ int main(int argc, char **argv) {
   TEST(test_to_dec_2);
   TEST(test_to_dec3);
   TEST(test_to_dec_4);
+
   // TODO: add calls to TEST for additional test functions
 
   TEST_FINI();
@@ -798,6 +801,16 @@ void test_div_4(TestObjs *objs) {
   std::cout << result1.to_hex() << std::endl; 
   check_contents(result1, {2UL});
   ASSERT(!result1.is_negative());
+}
+
+void test_div_5(TestObjs *objs) {
+  //divide 1 should be itself
+  BigInt result1 = objs->bigNum/BigInt(1,false);
+  ASSERT(result1.to_dec() == objs->bigNum.to_dec());
+
+  //devide -1 should be negation
+  BigInt result2 = objs->bigNum / BigInt(1, true);
+  ASSERT(result2.to_dec() == "-"+ objs->bigNum.to_dec());
 }
 
 void test_to_hex_1(TestObjs *objs) {
