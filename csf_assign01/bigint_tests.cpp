@@ -53,6 +53,7 @@ void test_add_6(TestObjs *objs);
 void test_add_7(TestObjs *objs);
 void test_negate_1(TestObjs *objs);
 void test_negate_2(TestObjs *objs);
+void test_negate_3(TestObjs *objs);
 void test_sub_1(TestObjs *objs);
 void test_sub_2(TestObjs *objs);
 void test_sub_3(TestObjs *objs);
@@ -106,6 +107,7 @@ int main(int argc, char **argv) {
   TEST(test_add_7);
   TEST(test_negate_1);
   TEST(test_negate_2);
+  TEST(test_negate_3);
   TEST(test_sub_1);
   TEST(test_sub_2);
   TEST(test_sub_3);
@@ -426,6 +428,27 @@ void test_negate_2(TestObjs *objs) {
   ASSERT(result2.is_negative());
 
 }
+
+void test_negate_3(TestObjs *objs) {
+  // Negate zero → should stay zero and non-negative
+  BigInt result1 = -objs->zero;
+  check_contents(result1, {0UL});
+  ASSERT(!result1.is_negative());
+
+  // Negate negative zero → normalize to zero
+  BigInt result2 = -objs->neg_zero;
+  check_contents(result2, {0UL});
+  ASSERT(result2.is_negative());
+
+  BigInt result3 = -objs->neg_bigNum;
+  check_contents(result3, {0x123456789abcdef0UL, 0x0fedcba987654321UL, 0x1122334455667788UL, 0x99aabbccddeeff00UL});
+  ASSERT(!result3.is_negative());
+
+
+  BigInt result4 = -(-objs->bigNum);
+  ASSERT(result4.compare(objs->bigNum) == 0);
+}
+
 
 void test_sub_1(TestObjs *objs) {
   // very basic tests for subtraction
@@ -780,7 +803,11 @@ void test_div_4(TestObjs *objs) {
 void test_to_hex_1(TestObjs *objs) {
   // some basic tests for to_hex()
 
-  std::string result1 = objs->zero.to_hex();
+  std::string result0 = objs->zero.to_hex();
+  // std::cout << result1 << std::endl;
+  ASSERT("0" == result0);
+
+  std::string result1 = objs->neg_zero.to_hex();
   // std::cout << result1 << std::endl;
   ASSERT("0" == result1);
 

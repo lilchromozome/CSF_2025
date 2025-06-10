@@ -290,26 +290,23 @@ BigInt BigInt::operator/(const BigInt &rhs) const
   // TODO: implement
   if(rhs.is_zero()){
     throw std::invalid_argument("Divide by 0");
-  } 
-
+  }
   BigInt top = *this;
   BigInt bottom = rhs;
   top.sign = false;
   bottom.sign = false;
-
+  if (compare_magnitudes(top, bottom) < 0) {
+    return BigInt(0, false);
+  }
   BigInt min(0, false);
   BigInt max = top;
   BigInt mid;
   BigInt product;
 
-  bool first = true;
-
   while (compare_magnitudes(min, max) <= 0) {
     mid = (min + max).div_by_2();
     product = mid * bottom;
-    
     int cmp = compare_magnitudes(product, top);
-
 
     if (cmp == 0) {
       mid.sign = (sign != rhs.sign);  //XOR
@@ -320,7 +317,6 @@ BigInt BigInt::operator/(const BigInt &rhs) const
       max = mid - BigInt(1, false);
     }
   }
-
 
   max.sign = (sign != rhs.sign);
   return max;
@@ -370,25 +366,6 @@ int BigInt::compare(const BigInt &rhs) const
   } 
 }
 
-// int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
-
-//   const auto &left = lhs.magnitude;
-//   const auto &right = rhs.magnitude;
-
-//   size_t left_size = kill_leading_zeros(left);
-//   size_t right_size = kill_leading_zeros(right);
-
-//   // Diff length
-//   if (left_size > right_size) return 1;
-//   if (left_size < right_size) return -1;
-
-//   // Same length
-//   for (size_t i = left_size; i-- > 0;) {
-//     return left[i] - right[i];
-//   }
-
-//   return 0;
-// }
 
 int BigInt::compare_magnitudes(const BigInt &lhs, const BigInt &rhs){
   const auto &left = lhs.magnitude;
@@ -427,7 +404,7 @@ bool BigInt::is_zero() const{
 std::string BigInt::to_hex() const
 {
   // TODO: implement
-  if (magnitude.empty()) {
+  if (magnitude.empty() || is_zero()) {
     return "0";
   }
   std::stringstream hex;
@@ -462,28 +439,21 @@ std::string BigInt::to_dec() const
 {
   // TODO: implement
   if (is_zero()) return "0";
-
   std::stringstream digits;
-
   BigInt num = *this;
   num.sign = false;
-
   BigInt ten(10,false);
-  
   while (!num.is_zero()){
     BigInt ans = num / ten;
     BigInt remainder = num - ans * ten;
     digits << std::to_string(remainder.magnitude[0]);
     num = ans;
   }
-
   std::string output = digits.str();
   std::reverse(output.begin(), output.end());
-
   if(sign){
     return "-" + output;
   }
   return output;
-
 }
 

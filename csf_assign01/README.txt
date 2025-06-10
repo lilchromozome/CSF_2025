@@ -6,7 +6,7 @@ Sichen Deng
 
 In the hexcode implementation I used bitwise operators by & 0b1111 to get a chunk that could be converted easily into a base16 value.
 
-William:
+William functions and corresponding tests:
 constructors
 destructor
 get_bit_vector() member function
@@ -18,7 +18,7 @@ operator<<(unsigned) member function (left shift)
 operator/(const BigInt &) member function (division—challenging!)
 to_dec() member function (conversion to base-10—challenging!)
 
-Sichen:
+Sichen functions and corresponding tests:
 is_bit_set(unsigned) member function
 operator+(const BigInt &) member function (addition)
 operator-(const BigInt &) member function (two-operand subtraction)
