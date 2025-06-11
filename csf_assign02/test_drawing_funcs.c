@@ -84,6 +84,9 @@ void test_draw_circle_clip(TestObjs *objs);
 void test_draw_tile(TestObjs *objs);
 void test_draw_sprite(TestObjs *objs);
 
+// prototypes of helper functions
+void test_in_bounds(TestObjs *objs);
+
 int main(int argc, char **argv) {
   if (argc > 1) {
     // user specified a specific test function to run
@@ -93,6 +96,9 @@ int main(int argc, char **argv) {
   TEST_INIT();
 
   // TODO: add TEST() directives for your helper functions
+  // helper functions
+  TEST(test_in_bounds);
+
   TEST(test_draw_pixel);
   TEST(test_draw_rect);
   TEST(test_draw_circle);
@@ -101,6 +107,19 @@ int main(int argc, char **argv) {
   TEST(test_draw_sprite);
 
   TEST_FINI();
+}
+
+void test_in_bounds(TestObjs *objs) {
+  struct Image img = {.width = 10, .height = 6, .data = NULL};
+
+  ASSERT(in_bounds(&img, 0, 0));
+  ASSERT(in_bounds(&img, 9, 5));
+  ASSERT(!in_bounds(&img, -1, 0));
+  ASSERT(!in_bounds(&img, 10, 0));
+  ASSERT(!in_bounds(&img, 0, -1));
+  ASSERT(!in_bounds(&img, 0, 6));
+  ASSERT(!in_bounds(&img, -1, -1));
+  ASSERT(!in_bounds(&img, 10, 6));
 }
 
 void test_draw_pixel(TestObjs *objs) {

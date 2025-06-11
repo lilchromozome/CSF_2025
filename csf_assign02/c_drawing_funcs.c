@@ -59,18 +59,18 @@ uint8_t get_a(uint32_t color){
 }
 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
-  uint8_t result = (alpha * fg + (255 - alpha) * bg) / 255;
+  uint32_t result = (alpha * fg + (255 - alpha) * bg) / 255;
   if (result > 255){
     result = 255;
   }
-  return (result);
+  return (uint8_t) result;
 }
 
 uint32_t blend_colors(uint32_t fg, uint32_t bg){
   uint8_t fg_r = get_r(fg);
   uint8_t fg_g = get_g(fg);
   uint8_t fg_b = get_b(fg);
-  uint8_t a = 255;
+  uint8_t a = get_a(fg);
 
   uint8_t bg_r = get_r(bg);
   uint8_t bg_g = get_g(bg);
@@ -80,7 +80,7 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
   uint8_t final_g = blend_components(fg_g, bg_g, a);
   uint8_t final_b = blend_components(fg_b, bg_b, a);
 
-  uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | a ;
+  uint32_t result = (a << 24) | (final_r << 16) | (final_g << 8) | final_b;
   return result; 
 }
 
