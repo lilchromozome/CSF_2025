@@ -10,6 +10,41 @@
 ////////////////////////////////////////////////////////////////////////
 
 // TODO: implement helper functions
+int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
+  int32_t img_width = img -> width;
+  int32_t img_height = img -> height;
+
+  if (y < 0 || y >= img_height || x < 0 || x >= img_width){
+    return 0;
+  }
+
+  return 1;
+}
+
+uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
+  //index= y*width + x
+  int32_t img_width = img -> width;
+
+  int32_t index = y * img_width + x;
+
+  return index;
+}
+
+uint8_t get_r(uint32_t color){
+  return (color >> 16) & 0xFF;
+}
+
+uint8_t get_g(uint32_t color){
+  return (color >> 8) & 0xFF;
+}
+
+uint8_t get_b(uint32_t color){
+  return (color) & 0xFF;
+}
+
+uint8_t get_a(uint32_t color){
+  return (color>>24) & 0xFF;
+}
 
 ////////////////////////////////////////////////////////////////////////
 // API functions
