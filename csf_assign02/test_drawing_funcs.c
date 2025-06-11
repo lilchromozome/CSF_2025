@@ -87,6 +87,9 @@ void test_draw_sprite(TestObjs *objs);
 // prototypes of helper functions
 void test_in_bounds(TestObjs *objs);
 void test_compute_index(TestObjs *objs);
+void test_get_color_components();
+void test_blend_components();
+void test_blend_colors();
 
 int main(int argc, char **argv) {
   if (argc > 1) {
@@ -100,6 +103,9 @@ int main(int argc, char **argv) {
   // helper functions
   TEST(test_in_bounds);
   TEST(test_compute_index);
+  TEST(test_get_color_components);
+  TEST(test_blend_components);
+  TEST(test_blend_colors);
 
   TEST(test_draw_pixel);
   TEST(test_draw_rect);
@@ -127,13 +133,68 @@ void test_in_bounds(TestObjs *objs) {
 void test_compute_index(TestObjs *objs) {
   struct Image img = { .width = 10, .height = 6, .data = NULL};
 
-   ASSERT(compute_index(&img, 0, 0) == 0);          // top-left
+  ASSERT(compute_index(&img, 0, 0) == 0);          // top-left
   ASSERT(compute_index(&img, 7, 0) == 7);          // top-right
   ASSERT(compute_index(&img, 0, 1) == 10);          // beginning of second row
   ASSERT(compute_index(&img, 1, 1) == 11);          // second row, second column
   ASSERT(compute_index(&img, 7, 5) == 57);         // bottom-right
   ASSERT(compute_index(&img, 3, 2) == 23);         // middle-ish
 }
+
+void test_get_color_components() {
+  uint32_t color1 = 0x12345678;
+  ASSERT(get_r(color1) == 0x34);
+  ASSERT(get_g(color1) == 0x56);
+  ASSERT(get_b(color1) == 0x78);
+  ASSERT(get_a(color1) == 0x12);
+
+  uint32_t color2 = 0xFF0000FF; 
+  ASSERT(get_r(color2) == 0x00);
+  ASSERT(get_g(color2) == 0x00);
+  ASSERT(get_b(color2) == 0xFF);
+  ASSERT(get_a(color2) == 0xFF);
+
+  uint32_t color3 = 0x00FF00FF; 
+  ASSERT(get_r(color3) == 0xFF);
+  ASSERT(get_g(color3) == 0x00);
+  ASSERT(get_b(color3) == 0xFF);
+  ASSERT(get_a(color3) == 0x00);
+}
+
+void test_blend_components() {
+  ASSERT(blend_components(100, 200, 255) == 100);
+
+  ASSERT(blend_components(100, 200, 0) == 200);
+
+  ASSERT(blend_components(100, 200, 128) == 149);
+
+  ASSERT(blend_components(50, 250, 64) == 199);
+
+  ASSERT(blend_components(255, 255, 255) == 255);
+}
+
+void test_blend_colors(void) {
+  // Case 1: Fully opaque red over black → result should be red with alpha = 255
+  uint32_t result1 = blend_colors(0xFF0000FF, 0x000000FF);
+  ASSERT(result1 == 0xFF0000FF);
+
+  // Case 2: Fully transparent green over black → result should be black with alpha = 0
+  uint32_t result2 = blend_colors(0x00FF0000, 0x000000FF); // A=0, R=255
+  ASSERT(result2 == 0x00000000);
+
+  // Case 3: 50% transparent green (G=255) over black
+  uint32_t result3 = blend_colors(0x00FF0080, 0x000000FF);
+  // alpha = 128, G = (128*255 + 127*0)/255 = ~128, so RGB = 0x008000
+  ASSERT(result3 == 0x00800080); // final A=128, RGB=(0,128,0)
+
+  // Case 4: Blend with background blue (fully opaque)
+  uint32_t result4 = blend_colors(0x00FF8000, 0x0000FFFF);
+  // fg = (R=0, G=255, B=128), alpha=0
+  // bg = blue, full alpha
+  ASSERT(result4 == 0x00000000);
+}
+
+
 
 void test_draw_pixel(TestObjs *objs) {
   // initially objs->small pixels are opaque black
