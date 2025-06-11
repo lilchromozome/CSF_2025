@@ -86,6 +86,7 @@ void test_draw_sprite(TestObjs *objs);
 
 // prototypes of helper functions
 void test_in_bounds(TestObjs *objs);
+void test_compute_index(TestObjs *objs);
 
 int main(int argc, char **argv) {
   if (argc > 1) {
@@ -98,6 +99,7 @@ int main(int argc, char **argv) {
   // TODO: add TEST() directives for your helper functions
   // helper functions
   TEST(test_in_bounds);
+  TEST(test_compute_index);
 
   TEST(test_draw_pixel);
   TEST(test_draw_rect);
@@ -120,6 +122,17 @@ void test_in_bounds(TestObjs *objs) {
   ASSERT(!in_bounds(&img, 0, 6));
   ASSERT(!in_bounds(&img, -1, -1));
   ASSERT(!in_bounds(&img, 10, 6));
+}
+
+void test_compute_index(TestObjs *objs) {
+  struct Image img = { .width = 10, .height = 6, .data = NULL};
+
+   ASSERT(compute_index(&img, 0, 0) == 0);          // top-left
+  ASSERT(compute_index(&img, 7, 0) == 7);          // top-right
+  ASSERT(compute_index(&img, 0, 1) == 10);          // beginning of second row
+  ASSERT(compute_index(&img, 1, 1) == 11);          // second row, second column
+  ASSERT(compute_index(&img, 7, 5) == 57);         // bottom-right
+  ASSERT(compute_index(&img, 3, 2) == 23);         // middle-ish
 }
 
 void test_draw_pixel(TestObjs *objs) {
