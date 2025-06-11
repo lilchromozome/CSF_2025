@@ -60,9 +60,9 @@ uint8_t get_a(uint32_t color){
 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
   uint8_t result = (alpha * fg + (255 - alpha) * bg) / 255;
-  // if (result > 255){
-  //   result = 255;
-  // }
+  if (result > 255){
+    result = 255;
+  }
   return (result);
 }
 
@@ -126,19 +126,22 @@ void draw_rect(struct Image *img,
                uint32_t color) {
   // TODO: implement
 
-  // IMPLEMENT EDGE CASES ------------------------------------------
-  int32_t width = rect->width;
-  int32_t height = rect->height;
-  
+  if (rect->width <= 0 || rect->height <= 0) return;
+
+  int32_t min_x = rect->x;
+  int32_t min_y = rect->y;
   int32_t max_x = rect->x + rect->width;
-  if(max_x > img->width ) width = rect->width - max_x + img->width;
-
   int32_t max_y = rect->y + rect->height;
-  if(max_y > img->height) height = rect->height - max_y + img->height;
 
-  for(size_t col = 0; col < width; ++col){
-    for(size_t row = 0; row < height; ++row){
-      draw_pixel(img, rect->x + col, rect->y + row, color);
+  // Clamp coordinates to image boundaries
+  if (min_x < 0) min_x = 0;
+  if (min_y < 0) min_y = 0;
+  if (max_x > img->width) max_x = img->width;
+  if (max_y > img->height) max_y = img->height;
+
+  for (int32_t col = min_x; col < max_x; ++col) {
+    for (int32_t row = min_y; row < max_y; ++row) {
+      draw_pixel(img, col, row, color);
     }
   }
 }
@@ -158,15 +161,25 @@ void draw_circle(struct Image *img,
                  int32_t x, int32_t y, int32_t r,
                  uint32_t color) {
   // TODO: implement
-  for(size_t point = 0; point < sizeof(img->data); ++point){
-    uint32_t i = compute_x(img, point);
-    uint32_t j = compute_y(img, point);
+  if(r <= 0) return;
 
-    uint32_t x_i_squared = (x - i) * (x - i);
-    uint32_t y_j_squared = (y - j) * (y - j);
-    if((x_i_squared + y_j_squared) < (r * r)){
-      draw_pixel(img, i, j, color);
-      printf("draw\n");
+  int32_t x_min = x - r;
+  int32_t x_max = x + r;
+  int32_t y_min = y - r;
+  int32_t y_max = y + r;
+
+  for (int32_t i = y_min; i <= y_max; ++i) {
+    for (int32_t j = x_min; j <= x_max; ++j) {
+      if (i < 0 || j < 0 || j >= img->width || i >= img->height)
+        continue;
+
+      int32_t diff_x = x - j;
+      int32_t diff_y = y - i;
+
+      if (diff_x * diff_x + diff_y * diff_y <= r * r) {
+        printf("draw %d\n", color);
+        draw_pixel(img, x, y, color);
+      }
     }
   }
 }
@@ -190,6 +203,24 @@ void draw_tile(struct Image *img,
                struct Image *tilemap,
                const struct Rect *tile) {
  // TODO: implement
+  int32_t width = tile->width;
+  int32_t height = tile->height;
+  
+  int32_t max_x = tile->x + tile->width;
+  if(max_x > img->width ) width = tile->width - max_x + img->width;
+
+  int32_t max_y = tile->y + tile->height;
+  if(max_y > img->height) height = tile->height - max_y + img->height;
+
+  for(size_t col = 0; col < width; ++col){
+    for(size_t row = 0; row < height; ++row){
+
+
+      uint32_t index_img = compute_index(img, x + col, y + row);
+      uint32_t index_tile = compute_index(img, col, row);
+      img->data[index_img] = tilemap->data[index_tile];
+    }
+  }
 }
 
 //
@@ -212,4 +243,20 @@ void draw_sprite(struct Image *img,
                  struct Image *spritemap,
                  const struct Rect *sprite) {
   // TODO: implement
+  for (int32_t col = 0; col < sprite->width; ++col) {
+    for (int32_t row = 0; row < sprite->height; ++row) {
+      int32_t out_x = x + col;
+      int32_t out_y = y + row;
+
+      if (out_x < 0 || out_x >= img->width || out_y < 0 || out_y >= img->height) 
+        continue;
+
+      if (out_x < 0 || out_x >= img->width || out_y < 0 || out_y >= img->height)
+          continue;
+
+      uint32_t index = compute_index(spritemap, sprite->x + col, sprite->y + row);
+      uint32_t color = spritemap->data[index];
+      draw_pixel(img, out_x, out_y, color);
+    }
+  }
 }
