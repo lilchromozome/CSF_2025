@@ -47,7 +47,11 @@ uint8_t get_a(uint32_t color){
 }
 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
-  return ((alpha * fg + (255 - alpha) * bg) / 255);
+  uint32_t result = (alpha * fg + (255 - alpha) * bg) / 255;
+  if (result > 255){
+    result = 255;
+  }
+  return (result);
 }
 
 uint32_t blend_colors(uint32_t fg, uint32_t bg){
@@ -68,7 +72,9 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
   return result; 
 }
 
-
+void set_pixel(struct Image *img, uint32_t index, uint32_t color){
+  img->data[index] = color;
+}
 ////////////////////////////////////////////////////////////////////////
 // API functions
 ////////////////////////////////////////////////////////////////////////
@@ -84,6 +90,13 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
 //
 void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) {
   // TODO: implement
+  if (!in_bounds(img, x, y)){
+    return;
+  }
+
+  uint32_t index = compute_index(img, x, y);
+  uint32_t final_color = blend_colors(color, img->data[index]);
+  set_pixel(img, index, final_color);
 }
 
 //
