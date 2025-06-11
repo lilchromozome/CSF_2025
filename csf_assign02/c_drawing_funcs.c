@@ -30,6 +30,18 @@ uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   return index;
 }
 
+uint32_t compute_x(struct Image *img, uint32_t index) {
+  int32_t img_width = img -> width;
+  int32_t x = index % img_width;
+  return x;
+}
+
+uint32_t compute_y(struct Image *img, uint32_t index) {
+  int32_t img_width = img -> width;
+  int32_t y = index / img_width;
+  return y;
+}
+
 uint8_t get_r(uint32_t color){
   return (color >> 16) & 0xFF;
 }
@@ -47,10 +59,10 @@ uint8_t get_a(uint32_t color){
 }
 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
-  uint32_t result = (alpha * fg + (255 - alpha) * bg) / 255;
-  if (result > 255){
-    result = 255;
-  }
+  uint8_t result = (alpha * fg + (255 - alpha) * bg) / 255;
+  // if (result > 255){
+  //   result = 255;
+  // }
   return (result);
 }
 
@@ -58,7 +70,7 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
   uint8_t fg_r = get_r(fg);
   uint8_t fg_g = get_g(fg);
   uint8_t fg_b = get_b(fg);
-  uint8_t a = get_a(fg);
+  uint8_t a = 255;
 
   uint8_t bg_r = get_r(bg);
   uint8_t bg_g = get_g(bg);
@@ -68,7 +80,7 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
   uint8_t final_g = blend_components(fg_g, bg_g, a);
   uint8_t final_b = blend_components(fg_b, bg_b, a);
 
-  uint32_t result = (a << 24) | (final_r << 16) | (final_g << 8) | (final_b);
+  uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | a ;
   return result; 
 }
 
@@ -113,6 +125,22 @@ void draw_rect(struct Image *img,
                const struct Rect *rect,
                uint32_t color) {
   // TODO: implement
+
+  // IMPLEMENT EDGE CASES ------------------------------------------
+  int32_t width = rect->width;
+  int32_t height = rect->height;
+  
+  int32_t max_x = rect->x + rect->width;
+  if(max_x > img->width ) width = rect->width - max_x + img->width;
+
+  int32_t max_y = rect->y + rect->height;
+  if(max_y > img->height) height = rect->height - max_y + img->height;
+
+  for(size_t col = 0; col < width; ++col){
+    for(size_t row = 0; row < height; ++row){
+      draw_pixel(img, rect->x + col, rect->y + row, color);
+    }
+  }
 }
 
 //
@@ -130,6 +158,17 @@ void draw_circle(struct Image *img,
                  int32_t x, int32_t y, int32_t r,
                  uint32_t color) {
   // TODO: implement
+  for(size_t point = 0; point < sizeof(img->data); ++point){
+    uint32_t i = compute_x(img, point);
+    uint32_t j = compute_y(img, point);
+
+    uint32_t x_i_squared = (x - i) * (x - i);
+    uint32_t y_j_squared = (y - j) * (y - j);
+    if((x_i_squared + y_j_squared) < (r * r)){
+      draw_pixel(img, i, j, color);
+      printf("draw\n");
+    }
+  }
 }
 
 //
