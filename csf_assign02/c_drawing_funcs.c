@@ -43,33 +43,38 @@ uint32_t compute_y(struct Image *img, uint32_t index) {
 }
 
 uint8_t get_r(uint32_t color){
-  return (color >> 16) & 0xFF;
+  return (color >> 24) & 0xFF;
 }
 
 uint8_t get_g(uint32_t color){
-  return (color >> 8) & 0xFF;
+  return (color >> 16) & 0xFF;
 }
 
 uint8_t get_b(uint32_t color){
-  return (color) & 0xFF;
+  return (color >> 8) & 0xFF;
 }
 
 uint8_t get_a(uint32_t color){
-  return (color>>24) & 0xFF;
+  return (color) & 0xFF;
 }
 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
-  uint32_t result = (alpha * fg + (255 - alpha) * bg) / 255;
-  if (result > 255){
-    result = 255;
-  }
+  fg &= 0xFF;
+  bg &= 0xFF;
+  alpha &= 0xFF;
+  
+  uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255;
   return (uint8_t) result;
 }
 
 uint32_t blend_colors(uint32_t fg, uint32_t bg){
   uint8_t a = get_a(fg);
   if(a==0){
-    return(0x00000000);
+    return(bg);
+  }
+
+  if(a == 255) {
+    return (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255;
   }
 
   uint8_t fg_r = get_r(fg);
@@ -84,7 +89,7 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
   uint8_t final_g = blend_components(fg_g, bg_g, a);
   uint8_t final_b = blend_components(fg_b, bg_b, a);
 
-  uint32_t result = (255 << 24) | (final_r << 16) | (final_g << 8) | final_b;
+  uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255;
   return result; 
 }
 
@@ -106,6 +111,9 @@ void set_pixel(struct Image *img, uint32_t index, uint32_t color){
 //
 void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) {
   // TODO: implement
+  //debug
+  //printf("drawing pixel at (%d, %d) with color 0x%08X\n", x, y, color);
+
   if (!in_bounds(img, x, y)){
     return;
   }

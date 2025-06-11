@@ -143,22 +143,22 @@ void test_compute_index(TestObjs *objs) {
 
 void test_get_color_components() {
   uint32_t color1 = 0x12345678;
-  ASSERT(get_r(color1) == 0x34);
-  ASSERT(get_g(color1) == 0x56);
-  ASSERT(get_b(color1) == 0x78);
-  ASSERT(get_a(color1) == 0x12);
+  ASSERT(get_r(color1) == 0x12);
+  ASSERT(get_g(color1) == 0x34);
+  ASSERT(get_b(color1) == 0x56);
+  ASSERT(get_a(color1) == 0x78);
 
   uint32_t color2 = 0xFF0000FF; 
-  ASSERT(get_r(color2) == 0x00);
+  ASSERT(get_r(color2) == 0xFF);
   ASSERT(get_g(color2) == 0x00);
-  ASSERT(get_b(color2) == 0xFF);
+  ASSERT(get_b(color2) == 0x00);
   ASSERT(get_a(color2) == 0xFF);
 
   uint32_t color3 = 0x00FF00FF; 
-  ASSERT(get_r(color3) == 0xFF);
-  ASSERT(get_g(color3) == 0x00);
-  ASSERT(get_b(color3) == 0xFF);
-  ASSERT(get_a(color3) == 0x00);
+  ASSERT(get_r(color3) == 0x00);
+  ASSERT(get_g(color3) == 0xFF);
+  ASSERT(get_b(color3) == 0x00);
+  ASSERT(get_a(color3) == 0xFF);
 }
 
 void test_blend_components() {
@@ -180,18 +180,18 @@ void test_blend_colors(void) {
 
   // Case 2: Fully transparent green over black → result should be black with alpha = 0
   uint32_t result2 = blend_colors(0x00FF0000, 0x000000FF); // A=0, R=255
-  ASSERT(result2 == 0x00000000);
+  ASSERT(result2 == 0x000000FF);
 
   // Case 3: 50% transparent green (G=255) over black
   uint32_t result3 = blend_colors(0x00FF0080, 0x000000FF);
   // alpha = 128, G = (128*255 + 127*0)/255 = ~128, so RGB = 0x008000
-  ASSERT(result3 == 0x00800080); // final A=128, RGB=(0,128,0)
+  ASSERT(result3 == 0x008000FF); // final A=128, RGB=(0,128,0)
 
   // Case 4: Blend with background blue (fully opaque)
   uint32_t result4 = blend_colors(0x00FF8000, 0x0000FFFF);
   // fg = (R=0, G=255, B=128), alpha=0
   // bg = blue, full alpha
-  ASSERT(result4 == 0x00000000);
+  ASSERT(result4 == 0x0000FFFF);
 }
 
 
@@ -200,6 +200,10 @@ void test_draw_pixel(TestObjs *objs) {
   // initially objs->small pixels are opaque black
   ASSERT(objs->small.data[SMALL_IDX(3, 2)] == 0x000000FFU);
   ASSERT(objs->small.data[SMALL_IDX(5, 4)] == 0x000000FFU);
+
+  //debug
+  //printf("actual:   0x%08X\n", objs->small.data[SMALL_IDX(5, 4)]);
+  //printf("expected: 0x800080FF\n");
 
   // test drawing completely opaque pixels
   draw_pixel(&objs->small, 3, 2, 0xFF0000FF); // opaque red
