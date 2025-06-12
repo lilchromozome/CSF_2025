@@ -225,6 +225,26 @@ void draw_tile(struct Image *img,
  // TODO: implement
   int32_t width = tile->width;
   int32_t height = tile->height;
+
+  if (tile->x < 0 || tile->y < 0 || tile->x + width > tilemap->width || tile->y + height > tilemap->height) return;
+
+  int32_t start_col = 0;
+  int32_t start_row = 0;
+
+  if(x<0) {
+    start_col = -x;
+    width -= start_col;
+    x=0;
+  }
+  if(y < 0){
+    start_row = -y;
+    height -= start_row;
+    y = 0;
+  }
+  if (x + width > img->width ) width = img -> width -x;
+  if (y + height > img->height) height = img->height - y;
+  if(width<=0 || height <= 0) return;
+  
   
   int32_t tilemap_max_x = tilemap->width - tile->x;
   int32_t img_max_x = img->width - x;
@@ -240,7 +260,7 @@ void draw_tile(struct Image *img,
     for(size_t row = 0; row < height; ++row){
 
       uint32_t index_img = compute_index(img, x + col, y + row);
-      uint32_t index_tile = compute_index(tilemap, tile->x +col,tile ->y + row);
+      uint32_t index_tile = compute_index(tilemap, tile->x + start_col + col,tile ->y + start_row + row);
       if(index_img < 0 || index_tile < 0) continue;
       img->data[index_img] = tilemap->data[index_tile];
     }
@@ -267,6 +287,8 @@ void draw_sprite(struct Image *img,
                  struct Image *spritemap,
                  const struct Rect *sprite) {
   // TODO: implement
+  if(sprite->x < 0|| sprite->y <0 || sprite->x + sprite-> width > spritemap -> width || sprite->y + sprite->height > spritemap->height) return;
+
   for (int32_t col = 0; col < sprite->width; ++col) {
     for (int32_t row = 0; row < sprite->height; ++row) {
       int32_t out_x = x + col;
