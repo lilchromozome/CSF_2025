@@ -180,6 +180,11 @@ void draw_circle(struct Image *img,
   int32_t y_min = y - r;
   int32_t y_max = y + r;
 
+  if(y_min < 0) y_min = 0;
+  if(x_min < 0) x_min = 0;
+  if(y_max >= img->height) y_max = img->height-1;
+  if(x_max >= img->width) x_max = img->width-1;
+
   for (int32_t i = y_min; i <= y_max; ++i) {
     for (int32_t j = x_min; j <= x_max; ++j) {
       if (i < 0 || j < 0 || j >= img->width || i >= img->height)
@@ -189,7 +194,7 @@ void draw_circle(struct Image *img,
       int32_t diff_y = y - i;
 
       if (diff_x * diff_x + diff_y * diff_y <= r * r) {
-        printf("draw %d, %d, %d\n", color);
+        // printf("draw %d, %d, %d\n", color);
         draw_pixel(img, j, i, color);
       }
     }
