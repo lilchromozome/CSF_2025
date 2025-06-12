@@ -10,6 +10,16 @@
 ////////////////////////////////////////////////////////////////////////
 
 // TODO: implement helper functions
+//
+//check if (x,y) is in the boundary of the image
+//
+//Parameters:
+//  img - pointer to Image
+//  x - x coordinate
+//  y - y coordinate
+//
+//Return:
+// 1 if (x, y) is inside the image boundary, 0 otherwise.
 int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
   int32_t img_width = img -> width;
   int32_t img_height = img -> height;
@@ -19,6 +29,11 @@ int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
   return 1;
 }
 
+// Compute the array index
+//
+// Returns:
+// Index in the image data array corresponding to (x,y)
+//
 uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   //index= y*width + x
   int32_t img_width = img -> width;
@@ -28,6 +43,13 @@ uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   return index;
 }
 
+//Compute the x or y coordinate from the index
+//
+//Parameters:
+//  indx - index in the image data array
+//
+//Returns:
+//  x or y coordinate corresponding to the index
 uint32_t compute_x(struct Image *img, uint32_t index) {
   int32_t img_width = img -> width;
   int32_t x = index % img_width;
@@ -40,6 +62,11 @@ uint32_t compute_y(struct Image *img, uint32_t index) {
   return y;
 }
 
+//Extract red or green or blue or alpha component from a 32-bit color
+//
+//Parameter:
+//color - 32-bit color value
+//
 //RRGGBBAA
 uint8_t get_r(uint32_t color){
   return (color >> 24) & 0xFF;
@@ -57,6 +84,7 @@ uint8_t get_a(uint32_t color){
   return (color) & 0xFF;
 }
 
+// Blend 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
   uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255;
   return (uint8_t) result;
