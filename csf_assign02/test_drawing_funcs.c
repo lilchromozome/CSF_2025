@@ -87,12 +87,21 @@ void test_draw_sprite(TestObjs *objs);
 // prototypes of helper functions
 void test_in_bounds(TestObjs *objs);
 void test_in_bounds_2(TestObjs *objs);
+void test_in_bounds_3(TestObjs *objs);
+void test_in_bounds_4(TestObjs *objs);
 void test_compute_index(TestObjs *objs);
 void test_compute_index_2(TestObjs *objs);
+void test_compute_index_3(TestObjs *objs);
+void test_compute_index_4(TestObjs *objs);
 void test_get_color_components();
+void test_get_color_components_2(); 
 void test_set_pixel(TestObjs *objs);
+void test_set_pixel_2(TestObjs *objs);
 void test_blend_components();
+void test_blend_components_2();
 void test_blend_colors();
+void test_blend_colors_2();
+
 
 int main(int argc, char **argv) {
   if (argc > 1) {
@@ -106,12 +115,20 @@ int main(int argc, char **argv) {
   // helper functions
   TEST(test_in_bounds);
   TEST(test_in_bounds_2);
+  TEST(test_in_bounds_3);
+  TEST(test_in_bounds_4);
   TEST(test_compute_index);
   TEST(test_compute_index_2);
+  TEST(test_compute_index_3);
+  TEST(test_compute_index_4);
   TEST(test_get_color_components);
+  TEST(test_get_color_components_2);
   TEST(test_blend_components);
+  TEST(test_blend_components_2);
   TEST(test_blend_colors);
+  TEST(test_blend_colors_2);
   TEST(test_set_pixel);
+  TEST(test_set_pixel_2);
   TEST(test_draw_pixel);
   TEST(test_draw_rect);
   TEST(test_draw_circle);
@@ -148,6 +165,24 @@ void test_in_bounds_2(TestObjs *objs) {
   ASSERT(!in_bounds(&img, 10, 6));
 }
 
+void test_in_bounds_3(TestObjs *objs) {
+  struct Image img = { .width = 8, .height = 8, .data = NULL };
+
+  ASSERT(in_bounds(&img, 4, 4));
+  ASSERT(in_bounds(&img, 7, 0));
+  ASSERT(!in_bounds(&img, 3, 8));
+  ASSERT(!in_bounds(&img, -1, 5));
+}
+
+void test_in_bounds_4(TestObjs *objs) {
+  struct Image img = { .width = 1, .height = 1, .data = NULL };
+
+  ASSERT(in_bounds(&img, 0, 0));
+  ASSERT(!in_bounds(&img, 1, 0));
+  ASSERT(!in_bounds(&img, 0, 1));
+  ASSERT(!in_bounds(&img, -1, -1));
+}
+
 void test_compute_index(TestObjs *objs) {
   struct Image img = { .width = 10, .height = 6, .data = NULL};
 
@@ -173,6 +208,24 @@ void test_compute_index_2(TestObjs *objs) {
   ASSERT(compute_index(&img, 3, 2) == 23);
 }
 
+void test_compute_index_3(TestObjs *objs) {
+  struct Image img = { .width = 5, .height = 5, .data = NULL };
+
+  ASSERT(compute_index(&img, 0, 4) == 20);
+  ASSERT(compute_index(&img, 4, 0) == 4);
+  ASSERT(compute_index(&img, 2, 2) == 12);
+}
+
+void test_compute_index_4(TestObjs *objs) {
+  struct Image img = { .width = 5, .height = 5, .data = NULL };
+
+  ASSERT(compute_index(&img, -2, 3) == -1);
+  ASSERT(compute_index(&img, 3, -2) == -1);
+  ASSERT(compute_index(&img, 5, 2) == -1);
+  ASSERT(compute_index(&img, 2, 5) == -1);
+}
+
+
 void test_get_color_components() {
   uint32_t color1 = 0x12345678;
   ASSERT(get_r(color1) == 0x12);
@@ -193,6 +246,20 @@ void test_get_color_components() {
   ASSERT(get_a(color3) == 0xFF);
 }
 
+void test_get_color_components_2() {
+  uint32_t color = 0xA1B2C3D4;
+  ASSERT(get_r(color) == 0xA1);
+  ASSERT(get_g(color) == 0xB2);
+  ASSERT(get_b(color) == 0xC3);
+  ASSERT(get_a(color) == 0xD4);
+
+  uint32_t color_inv = 0x00000000;
+  ASSERT(get_r(color_inv) == 0x00);
+  ASSERT(get_g(color_inv) == 0x00);
+  ASSERT(get_b(color_inv) == 0x00);
+  ASSERT(get_a(color_inv) == 0x00);
+}
+
 void test_blend_components() {
   ASSERT(blend_components(100, 200, 255) == 100);
 
@@ -205,7 +272,14 @@ void test_blend_components() {
   ASSERT(blend_components(255, 255, 255) == 255);
 }
 
-void test_blend_colors(void) {
+void test_blend_components_2() {
+  // fg darker than bg
+  ASSERT(blend_components(50, 200, 128) == ((50*128 + 200*127) / 255));
+  // fg and bg same
+  ASSERT(blend_components(100, 100, 128) == 100);
+}
+
+void test_blend_colors() {
   // Case 1: Fully opaque red over black → result should be red with alpha = 255
   uint32_t result1 = blend_colors(0xFF0000FF, 0x000000FF);
   ASSERT(result1 == 0xFF0000FF);
@@ -226,24 +300,46 @@ void test_blend_colors(void) {
   ASSERT(result4 == 0x0000FFFF);
 }
 
+void test_blend_colors_2() {
+
+  uint32_t fg = 0xFF000080; // R=255, A=128
+  uint32_t bg = 0x0000FF80; // B=255, A=128
+  uint32_t result = blend_colors(fg, bg);
+
+  ASSERT(get_r(result) == 128);
+  ASSERT(get_g(result) == 0);
+  ASSERT(get_b(result) == 127);
+  ASSERT(get_a(result) == 255);
+}
+
 void test_set_pixel(TestObjs *objs) {
   struct Image img = { .width = 10, .height = 6, .data = NULL};
-
+  img.data = malloc(sizeof(uint32_t) * img.width * img.height);
   set_pixel(&img, 100, 0x12345678);
-  printf("\nballs\n");
   set_pixel(&img, -1, 0x12345678);
-  printf("\nballs\n");
   set_pixel(&img, 30, 0x12345678);
-  printf("\nballs\n");
   set_pixel(&img, 0, 0x12345678);
-  printf("\nballs\n");
   set_pixel(&img, 60, 0x12345678);
-  printf("\nballs\n");
   ASSERT(img.data[30] == 0x12345678);
   ASSERT(img.data[0] == 0x12345678);
 
+  free(img.data); 
+
 }
 
+
+void test_set_pixel_2(TestObjs *objs) {
+  struct Image img = { .width = 4, .height = 4, .data = NULL };
+  img.data = malloc(sizeof(uint32_t) * img.width * img.height);
+
+  set_pixel(&img, 15, 0xDEADBEEF);
+  ASSERT(img.data[15] == 0xDEADBEEF);
+  set_pixel(&img, 14, 0xbababa);
+  set_pixel(&img, 16, 0x1234);
+  ASSERT(img.data[15] == 0xDEADBEEF);
+  ASSERT(img.data[14] == 0xbababa);
+  free(img.data);
+}
 
 void test_draw_pixel(TestObjs *objs) {
   // initially objs->small pixels are opaque black
