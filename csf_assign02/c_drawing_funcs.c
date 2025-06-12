@@ -11,6 +11,7 @@
 
 // TODO: implement helper functions
 int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
+  if((img->width == 0) || (img->height == 0)) return 0;
   int32_t img_width = img -> width;
   int32_t img_height = img -> height;
 
@@ -23,9 +24,13 @@ int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
 
 uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   //index= y*width + x
+  if(x < 0 || y < 0) return -1;
+
   int32_t img_width = img -> width;
 
   int32_t index = y * img_width + x;
+
+  if(index >= img->width * img->height) return -1;
 
   return index;
 }
@@ -90,6 +95,7 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
 }
 
 void set_pixel(struct Image *img, uint32_t index, uint32_t color){
+  if(index >= img->width * img->height) return;
   img->data[index] = color;
 }
 ////////////////////////////////////////////////////////////////////////
@@ -115,6 +121,7 @@ void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) {
   }
 
   uint32_t index = compute_index(img, x, y);
+  if(index < 0) return;
   uint32_t final_color = blend_colors(color, img->data[index]);
   set_pixel(img, index, final_color);
 }
@@ -178,8 +185,8 @@ void draw_circle(struct Image *img,
 
   if(y_min < 0) y_min = 0;
   if(x_min < 0) x_min = 0;
-  if(y_max >= img->height) y_max = img->height-1;
-  if(x_max >= img->width) x_max = img->width-1;
+  if(y_max > img->height) y_max = img->height;
+  if(x_max > img->width) x_max = img->width;
 
   for (int32_t i = y_min; i <= y_max; ++i) {
     for (int32_t j = x_min; j <= x_max; ++j) {
@@ -232,9 +239,9 @@ void draw_tile(struct Image *img,
   for(size_t col = 0; col < width; ++col){
     for(size_t row = 0; row < height; ++row){
 
-
       uint32_t index_img = compute_index(img, x + col, y + row);
       uint32_t index_tile = compute_index(tilemap, tile->x +col,tile ->y + row);
+      if(index_img < 0 || index_tile < 0) continue;
       img->data[index_img] = tilemap->data[index_tile];
     }
   }
@@ -272,6 +279,7 @@ void draw_sprite(struct Image *img,
           continue;
 
       uint32_t index = compute_index(spritemap, sprite->x + col, sprite->y + row);
+      if(index < 0) continue;
       uint32_t color = spritemap->data[index];
       draw_pixel(img, out_x, out_y, color);
     }

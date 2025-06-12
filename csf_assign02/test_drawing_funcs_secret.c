@@ -133,7 +133,7 @@ int main(int argc, char **argv) {
   TEST(test_draw_pixel_stress1);
   TEST(test_draw_pixel_stress2);
 #endif
-#if 0
+#if 1
   TEST(test_draw_pixel_secret_1);
   TEST(test_draw_pixel_secret_2);
   TEST(test_draw_rect_secret_1);
@@ -146,7 +146,7 @@ int main(int argc, char **argv) {
   TEST(test_draw_sprite_secret_2);
 #endif
   // TEST(test_draw_tile_secret_1);
-  TEST(test_draw_tile_secret_2);
+  // TEST(test_draw_tile_secret_2);
 
   TEST_FINI();
 }

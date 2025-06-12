@@ -86,8 +86,11 @@ void test_draw_sprite(TestObjs *objs);
 
 // prototypes of helper functions
 void test_in_bounds(TestObjs *objs);
+void test_in_bounds_2(TestObjs *objs);
 void test_compute_index(TestObjs *objs);
+void test_compute_index_2(TestObjs *objs);
 void test_get_color_components();
+void test_set_pixel(TestObjs *objs);
 void test_blend_components();
 void test_blend_colors();
 
@@ -102,11 +105,13 @@ int main(int argc, char **argv) {
   // TODO: add TEST() directives for your helper functions
   // helper functions
   TEST(test_in_bounds);
+  TEST(test_in_bounds_2);
   TEST(test_compute_index);
+  TEST(test_compute_index_2);
   TEST(test_get_color_components);
   TEST(test_blend_components);
   TEST(test_blend_colors);
-
+  TEST(test_set_pixel);
   TEST(test_draw_pixel);
   TEST(test_draw_rect);
   TEST(test_draw_circle);
@@ -130,6 +135,19 @@ void test_in_bounds(TestObjs *objs) {
   ASSERT(!in_bounds(&img, 10, 6));
 }
 
+void test_in_bounds_2(TestObjs *objs) {
+  struct Image img = {.width = 0, .height = 0, .data = NULL};
+
+  ASSERT(!in_bounds(&img, 0, 0));
+  ASSERT(!in_bounds(&img, 9, 5));
+  ASSERT(!in_bounds(&img, -1, 0));
+  ASSERT(!in_bounds(&img, 10, 0));
+  ASSERT(!in_bounds(&img, 0, -1));
+  ASSERT(!in_bounds(&img, 0, 6));
+  ASSERT(!in_bounds(&img, -1, -1));
+  ASSERT(!in_bounds(&img, 10, 6));
+}
+
 void test_compute_index(TestObjs *objs) {
   struct Image img = { .width = 10, .height = 6, .data = NULL};
 
@@ -139,6 +157,20 @@ void test_compute_index(TestObjs *objs) {
   ASSERT(compute_index(&img, 1, 1) == 11);          // second row, second column
   ASSERT(compute_index(&img, 7, 5) == 57);         // bottom-right
   ASSERT(compute_index(&img, 3, 2) == 23);         // middle-ish
+
+  ASSERT(compute_index(&img, 3, 2) == 23);
+}
+
+void test_compute_index_2(TestObjs *objs) {
+  struct Image img = { .width = 10, .height = 6, .data = NULL};
+
+  ASSERT(compute_index(&img, 0, -1) == -1);       
+  ASSERT(compute_index(&img, 400, 0) == -1);      
+  ASSERT(compute_index(&img, 0, 90) == -1);      
+  ASSERT(compute_index(&img, -1, 1) == -1);        
+  ASSERT(compute_index(&img, 80, -5) == -1);       
+  ASSERT(compute_index(&img, -3, -2) == -1);         
+  ASSERT(compute_index(&img, 3, 2) == 23);
 }
 
 void test_get_color_components() {
@@ -194,6 +226,23 @@ void test_blend_colors(void) {
   ASSERT(result4 == 0x0000FFFF);
 }
 
+void test_set_pixel(TestObjs *objs) {
+  struct Image img = { .width = 10, .height = 6, .data = NULL};
+
+  set_pixel(&img, 100, 0x12345678);
+  printf("\nballs\n");
+  set_pixel(&img, -1, 0x12345678);
+  printf("\nballs\n");
+  set_pixel(&img, 30, 0x12345678);
+  printf("\nballs\n");
+  set_pixel(&img, 0, 0x12345678);
+  printf("\nballs\n");
+  set_pixel(&img, 60, 0x12345678);
+  printf("\nballs\n");
+  ASSERT(img.data[30] == 0x12345678);
+  ASSERT(img.data[0] == 0x12345678);
+
+}
 
 
 void test_draw_pixel(TestObjs *objs) {
