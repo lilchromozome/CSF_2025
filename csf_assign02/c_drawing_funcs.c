@@ -86,12 +86,19 @@ uint8_t get_a(uint32_t color){
   return (color & 0xFF);
 }
 
-// Blend 
+// Blend the color by usng alpha
+//
+// Parameters:
+// fg - foreground component
+// bg - background component
+// alpha - foregraound alpha value
+//
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
   uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255;
   return (uint8_t) result;
 }
 
+//Blend two color using alapha of foreground color
 uint32_t blend_colors(uint32_t fg, uint32_t bg){
   uint8_t a = get_a(fg);
   if(a==0){
@@ -118,6 +125,7 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
   return result; 
 }
 
+//set a pixel in the image array at the index
 void set_pixel(struct Image *img, uint32_t index, uint32_t color){
   img->data[index] = color;
 }
