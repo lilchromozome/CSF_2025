@@ -189,8 +189,8 @@ void draw_circle(struct Image *img,
       int32_t diff_y = y - i;
 
       if (diff_x * diff_x + diff_y * diff_y <= r * r) {
-        printf("draw %d\n", color);
-        draw_pixel(img, x, y, color);
+        printf("draw %d, %d, %d\n", color);
+        draw_pixel(img, j, i, color);
       }
     }
   }
