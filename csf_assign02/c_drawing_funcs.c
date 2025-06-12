@@ -24,7 +24,7 @@ int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
 
 uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   //index= y*width + x
-  if(x < 0 || y < 0) return -1;
+  if(x < 0 || y < 0 || x >= img->width || y > img->height) return -1;
 
   int32_t img_width = img -> width;
 
@@ -60,7 +60,7 @@ uint8_t get_b(uint32_t color){
 }
 
 uint8_t get_a(uint32_t color){
-  return (color) & 0xFF;
+  return (color & 0xFF);
 }
 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
@@ -176,7 +176,7 @@ void draw_circle(struct Image *img,
                  int32_t x, int32_t y, int32_t r,
                  uint32_t color) {
   // TODO: implement
-  if(r <= 0) return;
+  if(r < 0) return;
 
   int32_t x_min = x - r;
   int32_t x_max = x + r;
