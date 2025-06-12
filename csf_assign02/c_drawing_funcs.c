@@ -11,26 +11,19 @@
 
 // TODO: implement helper functions
 int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
-  if((img->width == 0) || (img->height == 0)) return 0;
   int32_t img_width = img -> width;
   int32_t img_height = img -> height;
 
-  if (y < 0 || y >= img_height || x < 0 || x >= img_width){
-    return 0;
-  }
+  if (y < 0 || y >= img_height || x < 0 || x >= img_width) return 0;
 
   return 1;
 }
 
 uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   //index= y*width + x
-  if(x < 0 || y < 0) return -1;
-
   int32_t img_width = img -> width;
 
   int32_t index = y * img_width + x;
-
-  if(index >= img->width * img->height) return -1;
 
   return index;
 }
@@ -47,6 +40,7 @@ uint32_t compute_y(struct Image *img, uint32_t index) {
   return y;
 }
 
+//RRGGBBAA
 uint8_t get_r(uint32_t color){
   return (color >> 24) & 0xFF;
 }
@@ -95,7 +89,6 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
 }
 
 void set_pixel(struct Image *img, uint32_t index, uint32_t color){
-  if(index >= img->width * img->height) return;
   img->data[index] = color;
 }
 ////////////////////////////////////////////////////////////////////////
@@ -121,7 +114,6 @@ void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) {
   }
 
   uint32_t index = compute_index(img, x, y);
-  if(index < 0) return;
   uint32_t final_color = blend_colors(color, img->data[index]);
   set_pixel(img, index, final_color);
 }
@@ -172,9 +164,7 @@ void draw_rect(struct Image *img,
 //   r       - radius of circle
 //   color   - uint32_t color value
 //
-void draw_circle(struct Image *img,
-                 int32_t x, int32_t y, int32_t r,
-                 uint32_t color) {
+void draw_circle(struct Image *img, int32_t x, int32_t y, int32_t r, uint32_t color) {
   // TODO: implement
   if(r <= 0) return;
 
@@ -185,8 +175,8 @@ void draw_circle(struct Image *img,
 
   if(y_min < 0) y_min = 0;
   if(x_min < 0) x_min = 0;
-  if(y_max > img->height) y_max = img->height;
-  if(x_max > img->width) x_max = img->width;
+  if(y_max >= img->height) y_max = img->height-1;
+  if(x_max >= img->width) x_max = img->width-1;
 
   for (int32_t i = y_min; i <= y_max; ++i) {
     for (int32_t j = x_min; j <= x_max; ++j) {
@@ -218,19 +208,18 @@ void draw_circle(struct Image *img,
 //   tilemap - pointer to Image (the tilemap)
 //   tile    - pointer to Rect (the tile)
 //
-void draw_tile(struct Image *img,
-               int32_t x, int32_t y,
-               struct Image *tilemap,
-               const struct Rect *tile) {
+void draw_tile(struct Image *img, int32_t x, int32_t y, struct Image *tilemap,const struct Rect *tile) {
  // TODO: implement
   int32_t width = tile->width;
   int32_t height = tile->height;
 
+  //return if tile is outside of the tilemap boundary
   if (tile->x < 0 || tile->y < 0 || tile->x + width > tilemap->width || tile->y + height > tilemap->height) return;
 
   int32_t start_col = 0;
   int32_t start_row = 0;
 
+  // if x or y is negative, skip the colums or rows
   if(x<0) {
     start_col = -x;
     width -= start_col;
@@ -241,6 +230,8 @@ void draw_tile(struct Image *img,
     height -= start_row;
     y = 0;
   }
+
+  // make sure to stay in image bounds
   if (x + width > img->width ) width = img -> width -x;
   if (y + height > img->height) height = img->height - y;
   if(width<=0 || height <= 0) return;
@@ -259,9 +250,9 @@ void draw_tile(struct Image *img,
   for(size_t col = 0; col < width; ++col){
     for(size_t row = 0; row < height; ++row){
 
+
       uint32_t index_img = compute_index(img, x + col, y + row);
       uint32_t index_tile = compute_index(tilemap, tile->x + start_col + col,tile ->y + start_row + row);
-      if(index_img < 0 || index_tile < 0) continue;
       img->data[index_img] = tilemap->data[index_tile];
     }
   }
@@ -301,7 +292,6 @@ void draw_sprite(struct Image *img,
           continue;
 
       uint32_t index = compute_index(spritemap, sprite->x + col, sprite->y + row);
-      if(index < 0) continue;
       uint32_t color = spritemap->data[index];
       draw_pixel(img, out_x, out_y, color);
     }
