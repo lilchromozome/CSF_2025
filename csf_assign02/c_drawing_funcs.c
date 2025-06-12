@@ -59,10 +59,6 @@ uint8_t get_a(uint32_t color){
 }
 
 uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha){
-  fg &= 0xFF;
-  bg &= 0xFF;
-  alpha &= 0xFF;
-  
   uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255;
   return (uint8_t) result;
 }
@@ -223,18 +219,22 @@ void draw_tile(struct Image *img,
   int32_t width = tile->width;
   int32_t height = tile->height;
   
-  int32_t max_x = tile->x + tile->width;
-  if(max_x > img->width ) width = tile->width - max_x + img->width;
+  int32_t tilemap_max_x = tilemap->width - tile->x;
+  int32_t img_max_x = img->width - x;
+  if(tilemap_max_x < width ) width = tilemap_max_x;
+  if(img_max_x < width) width = img_max_x;
 
-  int32_t max_y = tile->y + tile->height;
-  if(max_y > img->height) height = tile->height - max_y + img->height;
+  int32_t tilemap_max_y = tilemap->height - tile->y;
+  int32_t img_max_y = img -> height - y;
+  if(tilemap_max_y < height ) height = tilemap_max_y;
+  if(img_max_y < height) height = img_max_y;
 
   for(size_t col = 0; col < width; ++col){
     for(size_t row = 0; row < height; ++row){
 
 
       uint32_t index_img = compute_index(img, x + col, y + row);
-      uint32_t index_tile = compute_index(img, col, row);
+      uint32_t index_tile = compute_index(tilemap, tile->x +col,tile ->y + row);
       img->data[index_img] = tilemap->data[index_tile];
     }
   }
