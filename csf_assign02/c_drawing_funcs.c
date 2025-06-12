@@ -254,7 +254,7 @@ void draw_tile(struct Image *img,
 
 
       uint32_t index_img = compute_index(img, x + col, y + row);
-      uint32_t index_tile = compute_index(tilemap, tile->x +col,tile ->y + row);
+      uint32_t index_tile = compute_index(tilemap, tile->x + start_col + col,tile ->y + start_row + row);
       img->data[index_img] = tilemap->data[index_tile];
     }
   }
@@ -280,6 +280,8 @@ void draw_sprite(struct Image *img,
                  struct Image *spritemap,
                  const struct Rect *sprite) {
   // TODO: implement
+  if(sprite->x < 0|| sprite->y <0 || sprite->x + sprite-> width > spritemap -> width || sprite->y + sprite->height > spritemap->height) return;
+
   for (int32_t col = 0; col < sprite->width; ++col) {
     for (int32_t row = 0; row < sprite->height; ++row) {
       int32_t out_x = x + col;
