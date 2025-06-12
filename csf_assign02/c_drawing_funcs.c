@@ -213,6 +213,26 @@ void draw_tile(struct Image *img,
  // TODO: implement
   int32_t width = tile->width;
   int32_t height = tile->height;
+
+  if (tile->x < 0 || tile->y < 0 || tile->x + width > tilemap->width || tile->y + height > tilemap->height) return;
+
+  int32_t start_col = 0;
+  int32_t start_row = 0;
+
+  if(x<0) {
+    start_col = -x;
+    width -= start_col;
+    x=0;
+  }
+  if(y < 0){
+    start_row = -y;
+    height -= start_row;
+    y = 0;
+  }
+  if (x + width > img->width ) width = img -> width -x;
+  if (y + height > img->height) height = img->height - y;
+  if(width<=0 || height <= 0) return;
+  
   
   int32_t tilemap_max_x = tilemap->width - tile->x;
   int32_t img_max_x = img->width - x;
