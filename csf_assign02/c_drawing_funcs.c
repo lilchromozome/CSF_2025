@@ -52,17 +52,17 @@ uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
 //
 //Returns:
 //  x or y coordinate corresponding to the index
-uint32_t compute_x(struct Image *img, uint32_t index) {
-  int32_t img_width = img -> width;
-  int32_t x = index % img_width;
-  return x;
-}
+// uint32_t compute_x(struct Image *img, uint32_t index) {
+//   int32_t img_width = img -> width;
+//   int32_t x = index % img_width;
+//   return x;
+// }
 
-uint32_t compute_y(struct Image *img, uint32_t index) {
-  int32_t img_width = img -> width;
-  int32_t y = index / img_width;
-  return y;
-}
+// uint32_t compute_y(struct Image *img, uint32_t index) {
+//   int32_t img_width = img -> width;
+//   int32_t y = index / img_width;
+//   return y;
+// }
 
 //Extract red or green or blue or alpha component from a 32-bit color
 //
