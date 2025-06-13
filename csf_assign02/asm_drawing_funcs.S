@@ -42,8 +42,8 @@
 in_bounds:
     # rdi = struct Image *img, esi = x, edx = y
     # load img->width into eax, img->height into ecx
-    movl    (%rdi), %eax       # eax = img->width
-    movl    4(%rdi), %ecx      # ecx = img->height
+    movl    (%rdi), %eax       # eax = img.width
+    movl    4(%rdi), %ecx      # ecx = img-.eight
 
     # if (y < 0) return 0;
     cmpl    $0, %edx
@@ -58,11 +58,12 @@ in_bounds:
     cmpl    %eax, %esi
     jge     .Lfalse
 
-    # all checks passed -> return 1
+    # all vals in bounds -> return 1
     movl    $1, %eax
     ret
 .Lfalse:
-    xorl    %eax, %eax
+	# not in bounds -> retun 0;
+    movl $0, %eax
     ret
 
 
