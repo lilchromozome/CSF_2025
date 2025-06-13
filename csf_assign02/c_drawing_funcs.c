@@ -20,13 +20,13 @@
 //
 //Return:
 // 1 if (x, y) is inside the image boundary, 0 otherwise.
-bool in_bounds(struct Image *img, int32_t x, int32_t y) {
+int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
   int32_t img_width = img -> width;
   int32_t img_height = img -> height;
 
-  if (y < 0 || y >= img_height || x < 0 || x >= img_width) return false;
+  if (y < 0 || y >= img_height || x < 0 || x >= img_width) return 0;
 
-  return true;
+  return 1;
 }
 
 // Compute the array index
