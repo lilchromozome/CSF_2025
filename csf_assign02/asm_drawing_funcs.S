@@ -27,6 +27,46 @@
    Public API functions
  ***********************************************************************/
 
+/*check if (x,y) is in the boundary of the image
+*
+*Parameters:
+*  img - pointer to Image
+*  x - x coordinate
+*  y - y coordinate
+*
+*Return:
+*/ 1 if (x, y) is inside the image boundary, 0 otherwise.
+
+.globl in_bounds
+.type in_bounds, @function
+in_bounds:
+    # rdi = struct Image *img, esi = x, edx = y
+    # load img->width into eax, img->height into ecx
+    movl    (%rdi), %eax       # eax = img->width
+    movl    4(%rdi), %ecx      # ecx = img->height
+
+    # if (y < 0) return 0;
+    cmpl    $0, %edx
+    jl      .Lfalse
+    # if (y >= img_height) return 0;
+    cmpl    %ecx, %edx
+    jge     .Lfalse
+    # if (x < 0) return 0;
+    cmpl    $0, %esi
+    jl      .Lfalse
+    # if (x >= img_width) return 0;
+    cmpl    %eax, %esi
+    jge     .Lfalse
+
+    # all checks passed -> return 1
+    movl    $1, %eax
+    ret
+.Lfalse:
+    xorl    %eax, %eax
+    ret
+
+
+
 /*
  * Draw a pixel.
  *
