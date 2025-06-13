@@ -34,27 +34,26 @@
 *  x - x coordinate
 *  y - y coordinate
 *
-*Return:
-*/ 1 if (x, y) is inside the image boundary, 0 otherwise.
+*Return: 1 if (x, y) is inside the image boundary, 0 otherwise.
+*/ 
 
-.globl in_bounds
-.type in_bounds
+  .globl in_bounds
 in_bounds:
-    # rdi = struct Image *img, esi = x, edx = y
-    # load img->width into eax, img->height into ecx
+    # rdi = struct Image *img, esi = int32 x, edx = int32 y
+    # move  img.width in eax, img.height in ecx
     movl    (%rdi), %eax       # eax = img.width
     movl    4(%rdi), %ecx      # ecx = img-.eight
 
-    # if (y < 0) return 0;
+    /* if (y < 0) return 0; */
     cmpl    $0, %edx
     jl      .Lfalse
-    # if (y >= img_height) return 0;
+    /* if (y >= img_height) return 0; */
     cmpl    %ecx, %edx
     jge     .Lfalse
-    # if (x < 0) return 0;
+    /* if (x < 0) return 0; */
     cmpl    $0, %esi
     jl      .Lfalse
-    # if (x >= img_width) return 0;
+    /* if (x >= img_width) return 0; */
     cmpl    %eax, %esi
     jge     .Lfalse
 
@@ -66,7 +65,36 @@ in_bounds:
     movl $0, %eax
     ret
 
+/* Compute the array index
+*
+* Returns: Index in the image data array corresponding to (x,y)
+*/
+.global compute_index
+compute_index:
+  # rdi = struct Image *img, esi = int32 x, edx = int32 y
+  # uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
 
+  /* if(!in_bounds(img, x, y)) return -1; */
+  call in_bounds
+
+  cmpl $0, %eax /* eax has result of in_bounds, false = 0 */
+  je .return_neg1
+
+  /* index= y*width + x */
+  ; int32_t img_width = img -> width;
+  movl (%rdi), %ecx
+
+  ; int32_t index = y * img_width + x;
+  imull   %ecx, %edx        # edx (index) = y * width 
+  addl    %esi, %edx        # edx += x
+
+  ; return index;
+    movl    %edx, %eax
+    ret
+
+.return_neg1
+  movl $-1, %eax
+  ret
 
 /*
  * Draw a pixel.
