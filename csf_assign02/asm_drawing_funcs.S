@@ -39,7 +39,9 @@
 
   .globl in_bounds
 in_bounds:
-    # rdi = struct Image *img, esi = int32 x, edx = int32 y
+    # rdi = struct Image *img
+    # esi = int32 x
+    # edx = int32 y
     # move  img.width in eax, img.height in ecx
     movl    (%rdi), %eax       # eax = img.width
     movl    4(%rdi), %ecx      # ecx = img-.eight
@@ -285,6 +287,19 @@ blend_colors:
     popq    %rbx          ; delete temp var
     ret
 
+/* set a pixel in the image array at the index */
+.global set_pixel
+set_pixel:
+/* void set_pixel(struct Image *img, uint32_t index, uint32_t color) */
+  ; rdx = img
+  ; esi = index
+  ; edx = color
+
+  movq 8(%rdi), %rcx        ; 2 uint32 values (width, length in struct) store position of *data in %rcx
+  # img->data[index] = color;
+  movl    %esi, %eax        ; eax = index
+  movl    %edx, (%rcx,%rax,4)   # data[index] = color     4 bytes * index
+  ret
 
 
 /*
