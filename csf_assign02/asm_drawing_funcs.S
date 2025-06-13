@@ -38,7 +38,7 @@
 */ 1 if (x, y) is inside the image boundary, 0 otherwise.
 
 .globl in_bounds
-.type in_bounds, @function
+.type in_bounds
 in_bounds:
     # rdi = struct Image *img, esi = x, edx = y
     # load img->width into eax, img->height into ecx
