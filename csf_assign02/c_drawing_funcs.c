@@ -36,7 +36,9 @@ int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
 //
 uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   //index= y*width + x
-  if(!in_bounds(img, x, y)) return -1;
+  if(x < 0 || y < 0 || x >= img->width || y > img->height) return ((uint32_t)-1);
+
+  if(!in_bounds(img, x, y)) return (uint32_t)-1;
 
   int32_t img_width = img -> width;
 
@@ -127,6 +129,7 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
 
 //set a pixel in the image array at the index
 void set_pixel(struct Image *img, uint32_t index, uint32_t color){
+  if (index >= (uint32_t)(img->width * img->height)) return;
   img->data[index] = color;
 }
 ////////////////////////////////////////////////////////////////////////

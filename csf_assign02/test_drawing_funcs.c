@@ -219,10 +219,10 @@ void test_compute_index_3(TestObjs *objs) {
 void test_compute_index_4(TestObjs *objs) {
   struct Image img = { .width = 5, .height = 5, .data = NULL };
 
-  ASSERT(compute_index(&img, -2, 3) == -1);
-  ASSERT(compute_index(&img, 3, -2) == -1);
-  ASSERT(compute_index(&img, 5, 2) == -1);
-  ASSERT(compute_index(&img, 2, 5) == -1);
+  ASSERT(compute_index(&img, -2, 3) == (uint32_t)-1);
+  ASSERT(compute_index(&img, 3, -2) == (uint32_t)-1);
+  ASSERT(compute_index(&img, 5, 2) == (uint32_t)-1);
+  ASSERT(compute_index(&img, 2, 5) == (uint32_t)-1);
 }
 
 
