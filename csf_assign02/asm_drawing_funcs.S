@@ -64,7 +64,7 @@ in_bounds:
     ret
 .Lfalse:
 	# not in bounds -> retun false;
-    movl $0, %eax
+    movl 	$0, %eax
     ret
 
 /* Compute the array index
@@ -84,7 +84,7 @@ compute_index:
 
   /* index= y*width + x */
   # int32_t img_width = img -> width;
-  movl (%rdi), %ecx
+  movl 	(%rdi), %ecx
 
   # int32_t index = y * img_width + x;
   imull   %ecx, %edx        # edx (index) = y * width 
@@ -110,32 +110,32 @@ compute_index:
 get_r:
   /* uint8_t get_r(uint32_t color) */
   # color in %edi
-  movl %edi, %eax
-  shrl $24, %eax     # color >> 24 
-  andl $0xFF, %eax   # & 0xFF
+  movl 	%edi, %eax
+  shrl	 $24, %eax     # color >> 24 
+  andl 	$0xFF, %eax   # & 0xFF
   ret
 .global get_g
 get_g:
   /* uint8_t get_r(uint32_t color) */
   # color in %edi
-  movl %edi, %eax
-  shrl $16, %eax     # color >> 16
-  andl $0xFF, %eax   # & 0xFF
+  movl	 %edi, %eax
+  shrl 	$16, %eax     # color >> 16
+  andl 	$0xFF, %eax   # & 0xFF
   ret
 .global get_b
 get_b:
   /* uint8_t get_r(uint32_t color) */
   # color in %edi
   movl %edi, %eax
-  shrl $8, %eax     # color >> 8
-  andl $0xFF, %eax   # & 0xFF
+  shrl 	$8, %eax     # color >> 8
+  andl 	$0xFF, %eax   # & 0xFF
   ret
 .global get_a
 get_a:
   /* uint8_t get_r(uint32_t color) */
   # color in %edi
-  movl %edi, %eax
-  andl $0xFF, %eax   # & 0xFF
+  movl 	%edi, %eax
+  andl 	$0xFF, %eax   # & 0xFF
   ret
 
 /*
@@ -156,18 +156,18 @@ blend_components:
   # edx = alpha
 
   # uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255#
-  movl $255, %ecx         # ecx = 255
-  subl %edx, %ecx         # ecx = 255 - alpha
-  imull %esi, %ecx         # ecx = bg * (255 - alpha)
+  movl 		$255, %ecx         # ecx = 255
+  subl 		%edx, %ecx         # ecx = 255 - alpha
+  imull 	%esi, %ecx         # ecx = bg * (255 - alpha)
 
-  imull %edx, %edi         # edi = alpha * fg
-  addl %edi, %ecx         # ecx = alpha * fg + bg * (255 - alpha)
+  imull 	%edx, %edi         # edi = alpha * fg
+  addl 		%edi, %ecx         # ecx = alpha * fg + bg * (255 - alpha)
 
-  movl $255, %eax
-  movl $0, %edx           # clear edx for division
-  movl %ecx, %eax         # eax = numerator (retuned later)
-  movl $255, %ecx         # ecx = denominator
-  divl %ecx               # eax = edx:eax / ecx
+  movl 	$255, %eax
+  movl 	$0, %edx           # clear edx for division
+  movl 	%ecx, %eax         # eax = numerator (retuned later)
+  movl 	$255, %ecx         # ecx = denominator
+  divl 	%ecx               # eax = edx:eax / ecx
 
   # return (uint8_t) result#
   ret
@@ -179,97 +179,100 @@ blend_colors:
   # esi = bg
 
     # save fg and bg on stack
-    pushq %rbx              # rbx = temp var
-    movl %edi, %ebx        # ebx = fg
+    pushq 	%rbx              # rbx = temp var
+	pushq 	%r12
+    movl 	%edi, %ebx        # ebx = fg
+	movl 	%esi, %r12d 		# r12 = bg
 
     # uint8_t a = get_a(fg)#
     call get_a             # input: edi = fg, output: rax lower byt al = a
-    movzbl  %al, %ecx         # ecx = rax
+    movzbl  	%al, %ecx         # ecx = rax
 
     /* if (a == 0) return bg */
-    cmpb $0, %al
-    je .return_bg
+    cmpb 	$0, %al
+    je 		.return_bg
 
     /* if (a == 255) return fg with a = 255 */
-    cmpb $255, %al
-    je .return_fg_full
+    cmpb 	$255, %al
+    je 		.return_fg_full
 
     /* fg_r = get_r(fg) */
-    movl %ebx, %edi
+    movl 	%ebx, %edi
     call get_r
     movzbl  %al, %r8d         # r8d = fg_r
 
     /* fg_g = get_g(fg) */
-    movl %ebx, %edi
+    movl 	%ebx, %edi
     call get_g
-    movzbl %al, %r9d         # r9d = fg_g
+    movzbl 	%al, %r9d         # r9d = fg_g
 
     /* fg_b = get_b(fg) */
-    movl %ebx, %edi
+    movl 	%ebx, %edi
     call get_b
-    movzbl %al, %r10d        # r10d = fg_b
+    movzbl 	%al, %r10d        # r10d = fg_b
 
     /* bg_r = get_r(bg) */
-    movl %esi, %edi
+    movl 	%r12d, %edi
     call get_r
-    movzbl %al, %r11d        # r11d = bg_r
+    movzbl 	%al, %r11d        # r11d = bg_r
 
     /* blend_r = blend_components(fg_r, bg_r, a) */
-    movl %r8d, %edi        # fg_r
-    movl %r11d, %esi       # bg_r
-    movl %ecx, %edx        # a
+    movl	 %r8d, %edi        # fg_r
+    movl 	%r11d, %esi       # bg_r
+    movl 	%ecx, %edx        # a
     call blend_components
-    movzbl %al, %r8d         # r8d = final_r
+    movzbl 	%al, %r8d         # r8d = final_r
 
     /* bg_g = get_g(bg) */
-    movl %esi, %edi
+    movl 	%r12d, %edi
     call get_g
-    movzbl %al, %r11d        # r11d = bg_g
+    movzbl 	%al, %r11d        # r11d = bg_g
 
     /* blend_g = blend_components(fg_g, bg_g, a) */
-    movl    %r9d, %edi        # fg_g
-    movl    %r11d, %esi       # bg_g
-    movl    %ecx, %edx        # a
-    call    blend_components
-    movzbl  %al, %r9d         # r9d = final_g
+    movl 	%r9d, %edi        # fg_g
+    movl 	%r11d, %esi       # bg_g
+    movl 	%ecx, %edx        # a
+    call 	blend_components
+    movzbl 	%al, %r9d         # r9d = final_g
 
     /* bg_b = get_b(bg) */
-    movl    %esi, %edi
-    call    get_b
-    movzbl  %al, %r11d        # r11d = bg_b
+    movl 	%esi, %edi
+    call 	get_b
+    movzbl 	%al, %r11d        # r11d = bg_b
 
     /* blend_b = blend_components(fg_b, bg_b, a) */
-    movl    %r10d, %edi       # fg_b
-    movl    %r11d, %esi       # bg_b
-    movl    %ecx, %edx        # a
-    call    blend_components
-    movzbl  %al, %r10d        # r10d = final_b
+    movl 	%r10d, %edi       # fg_b
+    movl 	%r11d, %esi       # bg_b
+    movl 	%ecx, %edx        # a
+    call 	blend_components
+    movzbl 	%al, %r10d        # r10d = final_b
 
     /* uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255# */
-    movl    $255, %eax        # a = 255
-    shll    $8, %r10d         # final_b << 8
-    orl     %r10d, %eax       # (final_r << 24)
+    movl 	$255, %eax        # a = 255
+    shll 	$8, %r10d         # final_b << 8
+    orl 	%r10d, %eax       # (final_r << 24)
 
-    shll    $16, %r9d          # final_g << 16
-    orl     %r9d, %eax         # (final_r << 24) | (final_g << 16)
+    shll 	$16, %r9d          # final_g << 16
+    orl 	%r9d, %eax         # (final_r << 24) | (final_g << 16)
 
-    shll    $24, %r8d          # final_r << 24
-    orl     %r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
+    shll 	$24, %r8d          # final_r << 24
+    orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
-    popq    %rbx              # delete temp var
+    popq 	%r12
+	popq 	%rbx              # delete temp var
     ret
 
 .return_bg:
-    movl    %esi, %eax
-    popq    %rbx # delete temp var
+    movl 	%esi, %eax
+    popq 	%rbx # delete temp var
     ret
 
 .return_fg_full:
   /* return (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255# */
   # (get_r(fg) << 24)
-    movl    %ebx, %edi    # ebx = fg
-    call    get_r
-    movzbl  %al, %ecx     # ecx = r
+    movl 	%ebx, %edi    # ebx = fg
+    call 	get_r
+    movzbl 	%al, %ecx     # ecx = r
     shll    $24, %ecx     # move to correct spot for r
 
   # (get_g(fg) << 16))

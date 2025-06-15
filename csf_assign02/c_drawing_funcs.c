@@ -36,8 +36,6 @@ int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
 //
 uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
   //index= y*width + x
-  if(x < 0 || y < 0 || x >= img->width || y > img->height) return ((uint32_t)-1);
-
   if(!in_bounds(img, x, y)) return (uint32_t)-1;
 
   int32_t img_width = img -> width;

@@ -291,6 +291,7 @@ void test_blend_colors() {
   // Case 3: 50% transparent green (G=255) over black
   uint32_t result3 = blend_colors(0x00FF0080, 0x000000FF);
   // alpha = 128, G = (128*255 + 127*0)/255 = ~128, so RGB = 0x008000
+  printf("%d\n", result3);
   ASSERT(result3 == 0x008000FF); // final A=128, RGB=(0,128,0)
 
   // Case 4: Blend with background blue (fully opaque)
