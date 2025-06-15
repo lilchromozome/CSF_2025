@@ -180,13 +180,13 @@ blend_colors:
 
     # save fg and bg on stack
     pushq 	%rbx              # rbx = temp var
-	pushq 	%r12
+	  pushq 	%r12
     movl 	%edi, %ebx        # ebx = fg
-	movl 	%esi, %r12d 		# r12 = bg
+	  movl 	%esi, %r12d 		# r12 = bg
 
     # uint8_t a = get_a(fg)#
     call get_a             # input: edi = fg, output: rax lower byt al = a
-    movzbl  	%al, %ecx         # ecx = rax
+    movzbl  	%al, %ecx         # ecx = a
 
     /* if (a == 0) return bg */
     cmpb 	$0, %al
@@ -197,40 +197,40 @@ blend_colors:
     je 		.return_fg_full
 
     /* fg_r = get_r(fg) */
-    movl 	%ebx, %edi
+    movl 	%ebx, %edi          # edi = fg
     call get_r
     movzbl  %al, %r8d         # r8d = fg_r
 
     /* fg_g = get_g(fg) */
-    movl 	%ebx, %edi
+    movl 	%ebx, %edi          # edi = fg
     call get_g
     movzbl 	%al, %r9d         # r9d = fg_g
 
     /* fg_b = get_b(fg) */
-    movl 	%ebx, %edi
+    movl 	%ebx, %edi          # edi = fg
     call get_b
     movzbl 	%al, %r10d        # r10d = fg_b
 
     /* bg_r = get_r(bg) */
-    movl 	%r12d, %edi
+    movl 	%r12d, %edi         # edi = fg
     call get_r
     movzbl 	%al, %r11d        # r11d = bg_r
 
     /* blend_r = blend_components(fg_r, bg_r, a) */
-    movl	 %r8d, %edi        # fg_r
-    movl 	%r11d, %esi       # bg_r
-    movl 	%ecx, %edx        # a
+    movl	 %r8d, %edi        # edi = fg_r
+    movl 	%r11d, %esi       # esi = bg_r
+    movl 	%ecx, %edx        # edx = a
     call blend_components
     movzbl 	%al, %r8d         # r8d = final_r
 
     /* bg_g = get_g(bg) */
-    movl 	%r12d, %edi
+    movl 	%r12d, %edi         # edi = bg
     call get_g
     movzbl 	%al, %r11d        # r11d = bg_g
 
     /* blend_g = blend_components(fg_g, bg_g, a) */
-    movl 	%r9d, %edi        # fg_g
-    movl 	%r11d, %esi       # bg_g
+    movl 	%r9d, %edi        # edi = fg_g
+    movl 	%r11d, %esi       # esi = bg_g
     movl 	%ecx, %edx        # a
     call 	blend_components
     movzbl 	%al, %r9d         # r9d = final_g
@@ -247,23 +247,26 @@ blend_colors:
     call 	blend_components
     movzbl 	%al, %r10d        # r10d = final_b
 
-    /* uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255# */
+    /* uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255; */
     movl 	$255, %eax        # a = 255
     shll 	$8, %r10d         # final_b << 8
-    orl 	%r10d, %eax       # (final_r << 24)
+    orl 	%r10d, %eax       # (final_b << 8)
 
-    shll 	$16, %r9d          # final_g << 16
-    orl 	%r9d, %eax         # (final_r << 24) | (final_g << 16)
+    movl  %r9d, %ecx
+    shll 	$16, %ecx          # final_g << 16
+    orl 	%ecx, %eax         # (final_r << 24) | (final_g << 16)
 
-    shll 	$24, %r8d          # final_r << 24
-    orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
+    movl  %r8d, %ecx
+    shll 	$24, %ecx          # final_r << 24
+    orl 	%ecx, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
     popq 	%r12
-	popq 	%rbx              # delete temp var
+	  popq 	%rbx              # delete temp var
     ret
 
 .return_bg:
-    movl 	%esi, %eax
+    movl 	%r12d, %eax
+    popq  %r12
     popq 	%rbx # delete temp var
     ret
 
@@ -291,6 +294,8 @@ blend_colors:
 
     orl     $255, %ecx    # (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255
     movl    %ecx, %eax    
+
+    popq    %r12
     popq    %rbx          # delete temp var
     ret
 
@@ -321,8 +326,48 @@ set_pixel:
 	.globl draw_pixel
 draw_pixel:
 	/* TODO: implement */
-	ret
+  /* void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) */
+  # rdi = img
+  # esi = x
+  # edx = y
+  # ecx = color
 
+  pushq %rbx    # temp var
+  movl    %esi, %ebx          # store ebx = x
+  movl    %edx, %r8d          # store r8d = y
+  movl    %ecx, %r9d          # store r9d = color
+
+  /* in_bounds(img, x, y) */
+  movl    %ebx, %esi          # x
+  movl    %r8d, %edx          # y
+  call in_bounds
+  cmpl    $0, %eax            # if (!in_bounds(img, x, y))
+  je      .return_empty       # return
+
+  /* uint32_t index = compute_index(img, x, y); */
+  movl    %ebx, %esi          # x
+  movl    %r8d, %edx          # y
+  call    compute_index       # result %eax = index
+  movl    %eax, %r10d         # r10 = index
+
+  /* uint32_t final_color = blend_colors(color, img->data[index]); */
+  movq    8(%rdi), %r11       # r11 = img->data       
+  movl    (%r11,%r10,4), %esi # esi = img->data[index]
+
+  movl    %r9d, %edi          # edi = color
+  call    blend_colors        # eax = color after blending
+  
+  
+  /* set_pixel(img, index, final_color); */
+  movl    %r10d, %esi         # esi = index
+  movl    %eax, %edx          # edx = final color
+  call    set_pixel
+
+  # ret
+
+.return_empty:
+    popq    %rbx
+    ret
 
 /*
  * Draw a rectangle.
