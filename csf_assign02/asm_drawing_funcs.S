@@ -321,6 +321,12 @@ set_pixel:
 	.globl draw_pixel
 draw_pixel:
 	/* TODO: implement */
+  call compute_index
+
+  cmpl $-1, %eax
+  je .done
+
+.done:
 	ret
 
 
