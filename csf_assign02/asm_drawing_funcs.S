@@ -321,10 +321,17 @@ set_pixel:
 	.globl draw_pixel
 draw_pixel:
 	/* TODO: implement */
-  call compute_index
+  # if for in_bounds
+  call in_bounds
+  cmpl $0, %eax
+  je .done
 
+  # uint32_t index = compute_index(img, x, y);
+  call compute_index
   cmpl $-1, %eax
   je .done
+
+  uint32_t final_color = blend_colors(color, img->data[index]);
 
 .done:
 	ret
