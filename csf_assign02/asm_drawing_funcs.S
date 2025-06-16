@@ -155,17 +155,22 @@ blend_components:
   # esi = bg
   # edx = alpha
 
+  movl    %edi, %r8d     # r8d = fg
+  movl    %esi, %r9d     # r9d = bg
+  movl    %edx, %r10d    # r10d = alpha
+
   # uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255#
-  movl 		$255, %ecx         # ecx = 255
-  subl 		%edx, %ecx         # ecx = 255 - alpha
-  imull 	%esi, %ecx         # ecx = bg * (255 - alpha)
+  movl 		$255, %eax         # ecx = 255
+  subl 		%r10d, %eax         # ecx = 255 - alpha
+  imull 	%r9d, %eax         # ecx = bg * (255 - alpha)
 
-  imull 	%edx, %edi         # edi = alpha * fg
-  addl 		%edi, %ecx         # ecx = alpha * fg + bg * (255 - alpha)
+  imull 	%r10d, %r8d         # edi = alpha * fg
+  addl 		%r8d, %eax         # ecx = alpha * fg + bg * (255 - alpha)
 
-  movl 	$255, %eax
+  # movl 	$255, %eax
   movl 	$0, %edx           # clear edx for division
-  movl 	%ecx, %eax         # eax = numerator (retuned later)
+  # movl 	%ecx, %ebx         # eax = numerator (retuned later)
+  # movl  %ebx, %eax
   movl 	$255, %ecx         # ecx = denominator
   divl 	%ecx               # eax = edx:eax / ecx
 
@@ -249,16 +254,18 @@ blend_colors:
 
     /* uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255; */
     movl 	$255, %eax        # a = 255
-    shll 	$8, %r10d         # final_b << 8
-    orl 	%r10d, %eax       # (final_b << 8)
+    
+    movl %r10d, %edx
+    shll 	$8, %edx         # final_b << 8
+    orl 	%edx, %eax       # (final_b << 8)
 
-    movl  %r9d, %ecx
-    shll 	$16, %ecx          # final_g << 16
-    orl 	%ecx, %eax         # (final_r << 24) | (final_g << 16)
+    movl  %r9d, %edx
+    shll 	$16, %edx          # final_g << 16
+    orl 	%edx, %eax         # (final_r << 24) | (final_g << 16)
 
-    movl  %r8d, %ecx
-    shll 	$24, %ecx          # final_r << 24
-    orl 	%ecx, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
+    movl  %r8d, %edx
+    shll 	$24, %edx          # final_r << 24
+    orl 	%edx, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
     popq 	%r12
 	  popq 	%rbx              # delete temp var
@@ -303,14 +310,21 @@ blend_colors:
 .global set_pixel
 set_pixel:
 /* void set_pixel(struct Image *img, uint32_t index, uint32_t color) */
-  # rdx = img
+  # rdi = img
   # esi = index
   # edx = color
+
+  cmp   $0, %esi
+  jl    .return_set_pixel
 
   movq 8(%rdi), %rcx        # 2 uint32 values (width, length in struct) store position of *data in %rcx
   # img->data[index] = color#
   movl    %esi, %eax        # eax = index
+  movslq %eax, %rax 
   movl    %edx, (%rcx,%rax,4)   # data[index] = color     4 bytes * index
+  ret
+
+  .return_set_pixel:
   ret
 
 
@@ -349,6 +363,9 @@ draw_pixel:
   movl    %r8d, %edx          # y
   call    compute_index       # result %eax = index
   movl    %eax, %r10d         # r10 = index
+
+  cmpl  $-1, %r10d            # if index == -1 return;
+  je    .return_empty
 
   /* uint32_t final_color = blend_colors(color, img->data[index]); */
   movq    8(%rdi), %r11       # r11 = img->data       
