@@ -326,48 +326,28 @@ set_pixel:
 	.globl draw_pixel
 draw_pixel:
 	/* TODO: implement */
-  /* void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) */
+    /* void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) */
   # rdi = img
   # esi = x
   # edx = y
   # ecx = color
 
-  pushq %rbx    # temp var
-  movl    %esi, %ebx          # store ebx = x
-  movl    %edx, %r8d          # store r8d = y
-  movl    %ecx, %r9d          # store r9d = color
-
-  /* in_bounds(img, x, y) */
-  movl    %ebx, %esi          # x
-  movl    %r8d, %edx          # y
+  
+  # if for in_bounds
   call in_bounds
-  cmpl    $0, %eax            # if (!in_bounds(img, x, y))
-  je      .return_empty       # return
+  cmpl $0, %eax
+  je .done
 
-  /* uint32_t index = compute_index(img, x, y); */
-  movl    %ebx, %esi          # x
-  movl    %r8d, %edx          # y
-  call    compute_index       # result %eax = index
-  movl    %eax, %r10d         # r10 = index
+  # uint32_t index = compute_index(img, x, y);
+  call compute_index
+  cmpl $-1, %eax
+  je .done
 
-  /* uint32_t final_color = blend_colors(color, img->data[index]); */
-  movq    8(%rdi), %r11       # r11 = img->data       
-  movl    (%r11,%r10,4), %esi # esi = img->data[index]
+  uint32_t final_color = blend_colors(color, img->data[index]);
 
-  movl    %r9d, %edi          # edi = color
-  call    blend_colors        # eax = color after blending
-  
-  
-  /* set_pixel(img, index, final_color); */
-  movl    %r10d, %esi         # esi = index
-  movl    %eax, %edx          # edx = final color
-  call    set_pixel
+.done:
+	ret
 
-  # ret
-
-.return_empty:
-    popq    %rbx
-    ret
 
 /*
  * Draw a rectangle.
