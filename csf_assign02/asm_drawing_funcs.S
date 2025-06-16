@@ -381,8 +381,103 @@ draw_pixel:
  */
 	.globl draw_rect
 draw_rect:
-	/* TODO: implement */
-	ret
+	/* void draw_rect(struct Image *img,
+               const struct Rect *rect,
+               uint32_t color) */
+
+  pushq %r12        # calleee saved register
+  movl  %edx, %r12d # r12 = color
+
+  /* if (rect->width <= 0 || rect->height <= 0) return; */
+  movl    8(%rsi), %eax        # eax = rect->width
+  cmpl    $0, %eax
+  jle     .done_rect
+  movl    12(%rsi), %eax       # eax = rect->height
+  cmpl    $0, %eax
+  jle     .done_rect
+
+  /*
+  int32_t min_x = rect->x;
+  int32_t min_y = rect->y;
+  int32_t max_x = rect->x + rect->width;
+  int32_t max_y = rect->y + rect->height;
+  */
+
+  movl    (%rsi), %r8d         # r8d = min_x = rect->x
+  movl    4(%rsi), %r9d        # r9d = min_y = rect->y
+
+  movl    %r8d, %r10d          # r10d = min_x
+  addl    8(%rsi), %r10d       # r10d = max_x
+
+  movl    %r9d, %r11d          # r11d = min_y
+  addl    12(%rsi), %r11d      # r11d = max_y
+
+  /*
+  if (min_x < 0) min_x = 0;
+  if (min_y < 0) min_y = 0;
+  if (max_x > img->width) max_x = img->width;
+  if (max_y > img->height) max_y = img->height;
+  */
+
+  # min x < 0
+  movl    %r8d, %eax       # eax = rect->x
+  cmpl    $0, %eax
+  movl    $0, %ecx
+  cmovl   %ecx, %r8d        # r8 = new x min
+
+  # min y < 0
+  movl    %r9d, %eax      # eax = rext->y
+  cmpl    $0, %eax
+  movl    $0, %ecx
+  cmovl   %ecx, %r9d      # r9 = new y min
+
+  # max x > img_>width
+  movl    (%rdi), %eax        # eax = img->width
+  cmpl    %r10d, %eax
+  movl    %r10d, %ecx
+  cmovg   %eax, %ecx          
+  movl    %ecx, %r10d         # r10 = new max x
+
+  # max y > img-> height
+  movl    4(%rdi), %eax       # eax = img->height
+  cmpl    %r11d, %eax
+  movl    %r11d, %ecx
+  cmovg   %eax, %ecx
+  movl    %ecx, %r11d         # r11 = new max y
+
+.loop_start:
+  movl    %r8d, %ecx          # ecx = col
+
+.col_loop:
+/*   for (int32_t col = min_x; col < max_x; ++col) { */
+  cmpl    %r10d, %ecx         # if col >= max_x
+  jge     .done_rect
+
+/* for (int32_t row = min_y; row < max_y; ++row) */
+  movl    %r9d, %edx          # edx = row
+
+.row_loop:
+  cmpl    %r11d, %edx         # if row >= max_y
+  jge     .next_col
+
+  # draw_pixel(img, col, row, color);
+                              # rdi = img 
+  movl    %ecx, %esi          # esi = x = col
+                              # edx =  = row
+  movl    %r12d, %ecx         # ecx = color
+  call draw_pixel
+
+  incl    %edx                # ++row
+  jmp     .row_loop
+
+.next_col:
+    incl    %ecx                # ++col
+    jmp     .col_loop
+
+.done_rect:
+    popq    %r12                 # restore
+    ret
+
 
 /*
  * Draw a circle.
@@ -398,7 +493,122 @@ draw_rect:
 	.globl draw_circle
 draw_circle:
 	/* TODO: implement */
-	ret
+  /* void draw_circle(struct Image *img, int32_t x, int32_t y, int32_t r, uint32_t color) */
+  pushq   %r12
+  pushq   %r13
+  pushq   %r14
+  pushq   %r15
+
+  movl    %r8d, %r12d       # r12 = color
+  movl    %esi, %r13d       # r13 = x
+  movl    %edx, %r14d       # r14 = y
+  movl    %ecx, %r15d       # r15 = r
+
+  /* if (r < 0) return */
+  cmpl    $0, %ecx
+  jl      .done_circle
+
+  # x_min = x - r
+  # x_max = x + r
+  movl    %r13d, %r8d
+  subl    %ecx, %r8d        # r8d = x_min
+  movl    %r13d, %r9d
+  addl    %ecx, %r9d        # r9d = x_max
+
+  # y_min = y - r
+  # y_max = y + r
+  movl    %r14d, %r10d
+  subl    %ecx, %r10d       # r10d = y_min
+  movl    %r14d, %r11d
+  addl    %ecx, %r11d       # r11d = y_max
+
+  /* 
+  if(y_min < 0) y_min = 0;
+  if(x_min < 0) x_min = 0;
+  if(y_max >= img->height) y_max = img->height-1;
+  if(x_max >= img->width) x_max = img->width-1;
+  */ 
+
+  # clamp: y_min = max(0, y_min)
+  movl    $0, %ecx        # ecx = 0
+  cmpl    $0, %r10d
+  cmovl   %ecx, %r10d     # r10 = y_min
+
+  # x_min = max(0, x_min)
+  cmpl    $0, %r8d
+  cmovl   %ecx, %r8d       # r8 = x_min
+
+  # y_max = min(img->height, y_max)
+  movl    4(%rdi), %eax     # eax = img->height
+  movl    %r11d, %ecx
+  cmpl    %ecx, %eax        # if img->height < y_max
+  cmovl   %eax, %ecx
+  movl    %ecx, %r11d       # r11 = y_max
+
+  # x_max = min(img->width, x_max)
+  movl    (%rdi), %eax      # eax = img->width
+  movl    %r9d, %ecx
+  cmpl    %ecx, %eax        # if img->width < x_max
+  cmovl   %eax, %ecx
+  movl    %ecx, %r9d        # r9 = x_max
+
+# y loop: for (int32_t i = y_min; i <= y_max; ++i)
+.y_loop:
+  cmpl    %r11d, %r10d      # i <= y_max
+  jg      .done_circle
+  # x loop: for (int32_t j = x_min; j <= x_max; ++j) 
+  movl    %r8d, %ecx        # ecx = j
+
+.x_loop:
+  cmpl    %r9d, %ecx        # j <= x_max
+  jg      .next_y
+
+  /* if (!in_bounds(img, j, i)) continue; */
+  movl    %ecx, %esi        # esi = j
+  movl    %r10d, %edx       # edx = i
+  call    in_bounds
+  testl   $0, %eax
+  je      .skip_draw
+
+  # compute diff_x = center_x - j
+  movl    %r13d, %eax       # eax = center_x
+  subl    %ecx, %eax        # eax = diff_x
+  imull   %eax, %eax        # eax = diff_x^2
+
+  # compute diff_y = center_y - i
+  movl    %r14d, %edx       # edx = center_y
+  subl    %r10d, %edx       # edx = diff_y
+  imull   %edx, %edx        # edx = diff_y^2
+
+
+  /*  if (diff_x * diff_x + diff_y * diff_y <= r * r)  */
+  imull   %r15d, %r15d      # r15d = r * r
+
+  addl    %edx, %eax        # eax = diff_x^2 + diff_y^2
+  cmpl    %r15d, %eax       # r^2 - eax > 0
+  jg      .skip_draw
+
+  # draw_pixel(img, j, i, color)
+  movl    %ecx, %esi        # esi = j
+  movl    %r10d, %edx       # edx = i
+  movl    %r12d, %ecx       # ecx = color
+  call    draw_pixel 
+
+.next_y:
+    incl    %r10d             # ++i
+    jmp     .y_loop
+
+.skip_draw:
+    incl    %ecx              # ++j
+    jmp     .x_loop
+
+.done_circle:
+    # Restore stack
+    popq    %r15
+    popq    %r14
+    popq    %r13
+    popq    %r12
+    ret
 
 /*
  * Draw a tile by copying all pixels in the region

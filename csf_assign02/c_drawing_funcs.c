@@ -219,7 +219,7 @@ void draw_circle(struct Image *img, int32_t x, int32_t y, int32_t r, uint32_t co
 
   for (int32_t i = y_min; i <= y_max; ++i) {
     for (int32_t j = x_min; j <= x_max; ++j) {
-      if (i < 0 || j < 0 || j >= img->width || i >= img->height)
+      if (!in_bounds(img, j, i))
         continue;
 
       int32_t diff_x = x - j;
