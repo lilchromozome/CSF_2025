@@ -255,17 +255,17 @@ blend_colors:
     /* uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255; */
     movl 	$255, %eax        # a = 255
     
-    movl %r10d, %edx
-    shll 	$8, %edx         # final_b << 8
-    orl 	%edx, %eax       # (final_b << 8)
+    # movl %r10d, %edx
+    shll 	$8, %r10d         # final_b << 8
+    orl 	%r10d, %eax       # (final_b << 8)
 
-    movl  %r9d, %edx
-    shll 	$16, %edx          # final_g << 16
-    orl 	%edx, %eax         # (final_r << 24) | (final_g << 16)
+    # movl  %r9d, %edx
+    shll 	$16, %r9d          # final_g << 16
+    orl 	%r9d, %eax         # (final_r << 24) | (final_g << 16)
 
-    movl  %r8d, %edx
-    shll 	$24, %edx          # final_r << 24
-    orl 	%edx, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
+    # movl  %r8d, %edx
+    shll 	$24, %r8d          # final_r << 24
+    orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
     popq 	%r12
 	  popq 	%rbx              # delete temp var
@@ -351,31 +351,33 @@ draw_pixel:
   movl    %edx, %r8d          # store r8d = y
   movl    %ecx, %r9d          # store r9d = color
 
-  /* in_bounds(img, x, y) */
-  movl    %ebx, %esi          # x
-  movl    %r8d, %edx          # y
-  call in_bounds
-  cmpl    $0, %eax            # if (!in_bounds(img, x, y))
-  je      .return_empty       # return
-
   /* uint32_t index = compute_index(img, x, y); */
   movl    %ebx, %esi          # x
   movl    %r8d, %edx          # y
   call    compute_index       # result %eax = index
   movl    %eax, %r10d         # r10 = index
-
   cmpl  $-1, %r10d            # if index == -1 return;
   je    .return_empty
+  
 
   /* uint32_t final_color = blend_colors(color, img->data[index]); */
-  movq    8(%rdi), %r11       # r11 = img->data       
-  movl    (%r11,%r10,4), %esi # esi = img->data[index]
+  movq    8(%rdi), %r11       # r11 = img->data
+  
+
+  # Test
+  test    %r11, %r11          
+  je      .return_empty       
+
+  # esi = img->data[index]
+  movslq %r10d, %rax
+  movl (%r11, %rax, 4), %esi
 
   movl    %r9d, %edi          # edi = color
   call    blend_colors        # eax = color after blending
   
   
   /* set_pixel(img, index, final_color); */
+  movq %r13, %rdi 
   movl    %r10d, %esi         # esi = index
   movl    %eax, %edx          # edx = final color
   call    set_pixel
