@@ -273,6 +273,7 @@ void test_blend_components() {
 }
 
 void test_blend_components_2() {
+  ASSERT(blend_components(get_g(0x00FF0080), get_g(0x000000FF), get_a(0x00FF0080)) == 128);
   // fg darker than bg
   ASSERT(blend_components(50, 200, 128) == ((50*128 + 200*127) / 255));
   // fg and bg same
@@ -291,7 +292,7 @@ void test_blend_colors() {
   // Case 3: 50% transparent green (G=255) over black
   uint32_t result3 = blend_colors(0x00FF0080, 0x000000FF);
   // alpha = 128, G = (128*255 + 127*0)/255 = ~128, so RGB = 0x008000
-  printf("%d\n", result3);
+  printf("%x\n", result3);
   ASSERT(result3 == 0x008000FF); // final A=128, RGB=(0,128,0)
 
   // Case 4: Blend with background blue (fully opaque)
@@ -353,6 +354,7 @@ void test_draw_pixel(TestObjs *objs) {
 
   // test drawing completely opaque pixels
   draw_pixel(&objs->small, 3, 2, 0xFF0000FF); // opaque red
+  printf("actual:   0x%08X\n", objs->small.data[SMALL_IDX(3, 2)]);
   ASSERT(objs->small.data[SMALL_IDX(3, 2)] == 0xFF0000FF);
   draw_pixel(&objs->small, 5, 4, 0x800080FF); // opaque magenta (half-intensity)
   ASSERT(objs->small.data[SMALL_IDX(5, 4)] == 0x800080FF);

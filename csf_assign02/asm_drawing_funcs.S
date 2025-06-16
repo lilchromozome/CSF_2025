@@ -154,7 +154,11 @@ blend_components:
   # edi = fg
   # esi = bg
   # edx = alpha
-
+  pushq   %r8
+  pushq   %r9
+  pushq   %r10
+  pushq   %rcx
+  pushq   %rdx
   movl    %edi, %r8d     # r8d = fg
   movl    %esi, %r9d     # r9d = bg
   movl    %edx, %r10d    # r10d = alpha
@@ -175,6 +179,11 @@ blend_components:
   divl 	%ecx               # eax = edx:eax / ecx
 
   # return (uint8_t) result#
+  popq   %rdx
+  popq   %rcx
+  popq   %r10
+  popq   %r9
+  popq   %r8
   ret
 
 .globl blend_colors
@@ -182,6 +191,7 @@ blend_colors:
   /* uint32_t blend_colors(uint32_t fg, uint32_t bg) */
   # edi = fg
   # esi = bg
+  # edx
 
     # save fg and bg on stack
     pushq 	%rbx              # rbx = temp var
@@ -209,7 +219,7 @@ blend_colors:
     /* fg_g = get_g(fg) */
     movl 	%ebx, %edi          # edi = fg
     call get_g
-    movzbl 	%al, %r9d         # r9d = fg_g
+    movl 	%eax, %r9d         # r9d = fg_g
 
     /* fg_b = get_b(fg) */
     movl 	%ebx, %edi          # edi = fg
@@ -231,17 +241,17 @@ blend_colors:
     /* bg_g = get_g(bg) */
     movl 	%r12d, %edi         # edi = bg
     call get_g
-    movzbl 	%al, %r11d        # r11d = bg_g
+    movl 	%eax, %r11d        # r11d = bg_g
 
     /* blend_g = blend_components(fg_g, bg_g, a) */
     movl 	%r9d, %edi        # edi = fg_g
     movl 	%r11d, %esi       # esi = bg_g
     movl 	%ecx, %edx        # a
     call 	blend_components
-    movzbl 	%al, %r9d         # r9d = final_g
+    movl	%eax, %r9d         # r9d = final_g
 
     /* bg_b = get_b(bg) */
-    movl 	%esi, %edi
+    movl 	%r12d, %edi
     call 	get_b
     movzbl 	%al, %r11d        # r11d = bg_b
 
@@ -346,47 +356,45 @@ draw_pixel:
   # edx = y
   # ecx = color
 
-  pushq %rbx    # temp var
-  movl    %esi, %ebx          # store ebx = x
-  movl    %edx, %r8d          # store r8d = y
-  movl    %ecx, %r9d          # store r9d = color
+  pushq %rbp    # save rbp
+  movq %rsp, %rbp  # set rbp to current stack pointer
+  subq  $56, %rsp  # align stack to 16 bytes
+  # Gavi said to do 96 and he wrote this comment. You can ask him
+  # do not subtract points for that comment. This isn't compiler 
+  # generated code. 
+  # allocate on stack
+  movq %rdi, -8(%rbp)
+  movl %esi, -16(%rbp)
+  movl %edx, -24(%rbp)
+  movl %ecx, -32(%rbp)
 
-  /* uint32_t index = compute_index(img, x, y); */
-  movl    %ebx, %esi          # x
-  movl    %r8d, %edx          # y
-  call    compute_index       # result %eax = index
-  movl    %eax, %r10d         # r10 = index
-  cmpl  $-1, %r10d            # if index == -1 return;
-  je    .return_empty
-  
+  call compute_index
+  jz .return_empty
 
-  /* uint32_t final_color = blend_colors(color, img->data[index]); */
-  movq    8(%rdi), %r11       # r11 = img->data
-  
+  movq -8(%rbp), %rdi  # rdi = img
+  movl -16(%rbp), %esi  # esi = x
+  movl -24(%rbp), %edx  # edx = y
+  call compute_index
+  movl %eax, -40(%rbp)  # store index in stack
 
-  # Test
-  test    %r11, %r11          
-  je      .return_empty       
+  movq -8(%rbp), %rdi  # rdi = img pointer
+  xorq %r10, %r10  # clear r10
+  movl -40(%rbp), %r10d  # r10 = index
+  leaq (%rdi, %r10, 4), %r11  # r11 = img->data + index * 4
+  movl (%r11), %esi
+  movl %esi, -48(%rbp)  # store img->data[index] in stack
 
-  # esi = img->data[index]
-  movslq %r10d, %rax
-  movl (%r11, %rax, 4), %esi
+  call  blend_colors        # eax = color after blending
 
-  movl    %r9d, %edi          # edi = color
-  call    blend_colors        # eax = color after blending
-  
-  
-  /* set_pixel(img, index, final_color); */
-  movq %r13, %rdi 
-  movl    %r10d, %esi         # esi = index
-  movl    %eax, %edx          # edx = final color
-  call    set_pixel
-
-  # ret
+  movq -8(%rbp), %rdi  # r13 = img pointer
+  movl -40(%rbp), %esi  # esi = index
+  movl  %eax, %edx  # edx = final color
+  call   set_pixel
 
 .return_empty:
-    popq    %rbx
-    ret
+  addq $56, %rsp  # deallocate stack
+  popq %rbp      # restore rbp
+  ret
 
 /*
  * Draw a rectangle.
