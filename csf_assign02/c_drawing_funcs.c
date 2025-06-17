@@ -148,11 +148,14 @@ void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) {
   //debug
   //printf("drawing pixel at (%d, %d) with color 0x%08X\n", x, y, color);
 
+  if (!img || !img->data) return;
+  
   if (!in_bounds(img, x, y)){
     return;
   }
 
   uint32_t index = compute_index(img, x, y);
+  if (index == (uint32_t)-1) return;
   uint32_t final_color = blend_colors(color, img->data[index]);
   set_pixel(img, index, final_color);
 }
