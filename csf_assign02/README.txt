@@ -1,7 +1,7 @@
 William Li
 Sichen Deng
 
-Functions and tests written
+Functions and tests written in C
 
 William:
 in_bounds
@@ -19,3 +19,21 @@ blend_components
 blend_colors
 set_pixel
 draw_tile
+
+
+Functions and tests written in asm
+
+William:
+in_bounds
+compute_index
+get_r
+get_g
+get_b
+get_a
+
+
+Sichen:
+blend_components
+blend_colors
+set_pixel
+draw_pixel
