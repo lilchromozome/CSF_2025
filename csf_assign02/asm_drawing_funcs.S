@@ -28,20 +28,17 @@
  ***********************************************************************/
 
 /*check if (x,y) is in the boundary of the image
-*
-*Parameters:
-*  img - pointer to Image
-*  x - x coordinate
-*  y - y coordinate
-*
-*Return: 1 if (x, y) is inside the image boundary, 0 otherwise.
+//
+//Parameters:
+//  rdi = struct Image *img - pointer to Image
+//  esi = int32_t x - x coordinate
+//  edx = int32_t y - y coordinate
+//
+//Return: 1 if (x, y) is inside the image boundary, 0 otherwise.
 */ 
-
+/* int32_t in_bounds(struct Image *img, int32_t x, int32_t y) { */
   .globl in_bounds
 in_bounds:
-    # rdi = struct Image *img
-    # esi = int32 x
-    # edx = int32 y
     # move  img.width in eax, img.height in ecx
     movl    (%rdi), %eax       # eax = img.width
     movl    4(%rdi), %ecx      # ecx = img-.eight
@@ -64,23 +61,33 @@ in_bounds:
     ret
 .Lfalse:
 	# not in bounds -> retun false;
-    movl 	$0, %eax          # move 0 to return register
+    xorl 	%eax, %eax          # clear return register
     ret
 
-/* Compute the array index
-*
-* Returns: Index in the image data array corresponding to (x,y)
+/*
+// Compute the array index
+//
+//Parameters:
+//  rdi = struct Image *img - pointer to Image
+//  esi = int32_t x - x coordinate
+//  edx = int32_t y - y coordinate
+//
+// Returns:
+// Index in the image data array corresponding to (x,y)
+//
 */
-.global compute_index
+  .global compute_index
 compute_index:
-  # rdi = struct Image *img, esi = int32 x, edx = int32 y
   # uint32_t compute_index(struct Image *img, int32_t x, int32_t y) {
 
-  /* if(!in_bounds(img, x, y)) return -1; */
-  call in_bounds
+  # rdi = struct Image *img
+  # esi = int32 x
+  # edx = int32 y
 
-  cmpl $0, %eax /* eax has result of in_bounds, false = 0 */
-  je .Lreturn_neg1
+  /* if(!in_bounds(img, x, y)) return -1; */
+  call in_bounds            # in_bounds(img, x, y)
+  cmpl $0, %eax            /* if eax == 0, not in bounds */
+  je .Lreturn_neg1          # return -1
 
   /* index= y*width + x */
   # int32_t img_width = img -> width;
@@ -102,37 +109,40 @@ compute_index:
 /* Extract red or green or blue or alpha component from a 32-bit color
 *
 * Parameter:
-* color - 32-bit color value
+* edi = uint32_t color - 32-bit color value
 *
-* RRGGBBAA */
+* returns in format RRGGBBAA */
 
+  /* uint8_t get_r(uint32_t color) */
 .global get_r
 get_r:
-  /* uint8_t get_r(uint32_t color) */
   # color in %edi
   movl 	%edi, %eax
   shrl	 $24, %eax     # color >> 24 
   andl 	$0xFF, %eax   # & 0xFF
   ret
+
+/* uint8_t get_r(uint32_t color) */
 .global get_g
 get_g:
-  /* uint8_t get_r(uint32_t color) */
   # color in %edi
   movl	 %edi, %eax
   shrl 	$16, %eax     # color >> 16
   andl 	$0xFF, %eax   # & 0xFF
   ret
+
+/* uint8_t get_r(uint32_t color) */
 .global get_b
 get_b:
-  /* uint8_t get_r(uint32_t color) */
   # color in %edi
   movl %edi, %eax
   shrl 	$8, %eax     # color >> 8
   andl 	$0xFF, %eax   # & 0xFF
   ret
+
+/* uint8_t get_r(uint32_t color) */
 .global get_a
 get_a:
-  /* uint8_t get_r(uint32_t color) */
   # color in %edi
   movl 	%edi, %eax
   andl 	$0xFF, %eax   # & 0xFF
@@ -142,18 +152,14 @@ get_a:
 // Blend the color by usng alpha
 //
 // Parameters:
-// fg - foreground component
-// bg - background component
-// alpha - foregraound alpha value
+// edi = uint32_t fg - foreground component
+// esi = uint32_t bg - background component
+// edx = uint32_t alpha - foregraound alpha value
 */
+/* uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha) */
 
 .global blend_components
 blend_components:
-
-/* uint8_t blend_components(uint32_t fg, uint32_t bg, uint32_t alpha) */
-  # edi = fg
-  # esi = bg
-  # edx = alpha
   pushq   %r8           # callee saved for fg
   pushq   %r9           # callee saved for bg
   pushq   %r10          # callee saved for a
@@ -171,121 +177,128 @@ blend_components:
   imull 	%r10d, %r8d         # edi = alpha * fg
   addl 		%r8d, %eax         # ecx = alpha * fg + bg * (255 - alpha)
 
-  movl 	$0, %edx           # clear edx for division
+  xorl 	%edx, %edx           # clear edx for division
   movl 	$255, %ecx         # ecx = denominator
   divl 	%ecx               # eax = edx:eax / ecx
 
   # return (uint8_t) result#
-  popq   %rdx         # clear all registers
+  popq   %rdx         # clear all local registers
   popq   %rcx
   popq   %r10
   popq   %r9
   popq   %r8
   ret
 
+/*
+// Blend the color by usng alpha
+//
+// Parameters:
+// rdi = uint32_t fg - foreground component
+// esi = uint32_t bg - background component
+// edx = uint32_t alpha - foregraound alpha value
+//
+*/
+/* uint32_t blend_colors(uint32_t fg, uint32_t bg) */
+
 .globl blend_colors
 blend_colors:
-  /* uint32_t blend_colors(uint32_t fg, uint32_t bg) */
-  # edi = fg
-  # esi = bg
-  # edx
+  # save fg and bg on stack
+  pushq 	%rbx              # rbx = callee saved fg
+  pushq 	%r12              # r12 = callee saved bg.
+  movl 	%edi, %ebx        # ebx = fg
+  movl 	%esi, %r12d 		# r12 = bg
 
-    # save fg and bg on stack
-    pushq 	%rbx              # rbx = callee saved fg
-	  pushq 	%r12              # r12 = callee saved bg.
-    movl 	%edi, %ebx        # ebx = fg
-	  movl 	%esi, %r12d 		# r12 = bg
+  # uint8_t a = get_a(fg)#
+  call get_a             # input: edi = fg, output: rax lower byt al = a
+  movzbl  	%al, %ecx         # ecx = a
 
-    # uint8_t a = get_a(fg)#
-    call get_a             # input: edi = fg, output: rax lower byt al = a
-    movzbl  	%al, %ecx         # ecx = a
+  /* if (a == 0) return bg */
+  cmpb 	$0, %al
+  je 		.Lreturn_bg
 
-    /* if (a == 0) return bg */
-    cmpb 	$0, %al
-    je 		.Lreturn_bg
+  /* if (a == 255) return fg with a = 255 */
+  cmpb 	$255, %al
+  je 		.Lreturn_fg_full
 
-    /* if (a == 255) return fg with a = 255 */
-    cmpb 	$255, %al
-    je 		.Lreturn_fg_full
+  /* fg_r = get_r(fg) */
+  movl 	%ebx, %edi          # edi = fg
+  call get_r
+  movzbl  %al, %r8d         # r8d = fg_r
 
-    /* fg_r = get_r(fg) */
-    movl 	%ebx, %edi          # edi = fg
-    call get_r
-    movzbl  %al, %r8d         # r8d = fg_r
+  /* fg_g = get_g(fg) */
+  movl 	%ebx, %edi          # edi = fg
+  call get_g
+  movl 	%eax, %r9d         # r9d = fg_g
 
-    /* fg_g = get_g(fg) */
-    movl 	%ebx, %edi          # edi = fg
-    call get_g
-    movl 	%eax, %r9d         # r9d = fg_g
+  /* fg_b = get_b(fg) */
+  movl 	%ebx, %edi          # edi = fg
+  call get_b
+  movzbl 	%al, %r10d        # r10d = fg_b
 
-    /* fg_b = get_b(fg) */
-    movl 	%ebx, %edi          # edi = fg
-    call get_b
-    movzbl 	%al, %r10d        # r10d = fg_b
+  /* bg_r = get_r(bg) */
+  movl 	%r12d, %edi         # edi = fg
+  call get_r
+  movzbl 	%al, %r11d        # r11d = bg_r
 
-    /* bg_r = get_r(bg) */
-    movl 	%r12d, %edi         # edi = fg
-    call get_r
-    movzbl 	%al, %r11d        # r11d = bg_r
+  /* blend_r = blend_components(fg_r, bg_r, a) */
+  movl	 %r8d, %edi        # edi = fg_r
+  movl 	%r11d, %esi       # esi = bg_r
+  movl 	%ecx, %edx        # edx = a
+  call blend_components      # eax = blend_components(fg_r, bg_r, a)
+  movzbl 	%al, %r8d         # r8d = final_r
 
-    /* blend_r = blend_components(fg_r, bg_r, a) */
-    movl	 %r8d, %edi        # edi = fg_r
-    movl 	%r11d, %esi       # esi = bg_r
-    movl 	%ecx, %edx        # edx = a
-    call blend_components      # eax = blend_components(fg_r, bg_r, a)
-    movzbl 	%al, %r8d         # r8d = final_r
+  /* bg_g = get_g(bg) */
+  movl 	%r12d, %edi         # edi = bg
+  call get_g
+  movl 	%eax, %r11d        # r11d = bg_g
 
-    /* bg_g = get_g(bg) */
-    movl 	%r12d, %edi         # edi = bg
-    call get_g
-    movl 	%eax, %r11d        # r11d = bg_g
+  /* blend_g = blend_components(fg_g, bg_g, a) */
+  movl 	%r9d, %edi        # edi = fg_g
+  movl 	%r11d, %esi       # esi = bg_g
+  movl 	%ecx, %edx        # edx = a
+  call 	blend_components    # eax = blend_components(fg_g, bg_g, a)
+  movl	%eax, %r9d         # r9d = final_g
 
-    /* blend_g = blend_components(fg_g, bg_g, a) */
-    movl 	%r9d, %edi        # edi = fg_g
-    movl 	%r11d, %esi       # esi = bg_g
-    movl 	%ecx, %edx        # edx = a
-    call 	blend_components    # eax = blend_components(fg_g, bg_g, a)
-    movl	%eax, %r9d         # r9d = final_g
+  /* bg_b = get_b(bg) */
+  movl 	%r12d, %edi         # edi = bg
+  call 	get_b
+  movzbl 	%al, %r11d        # r11d = bg_b
 
-    /* bg_b = get_b(bg) */
-    movl 	%r12d, %edi         # edi = bg
-    call 	get_b
-    movzbl 	%al, %r11d        # r11d = bg_b
+  /* blend_b = blend_components(fg_b, bg_b, a) */
+  movl 	%r10d, %edi       # edi = fg_b
+  movl 	%r11d, %esi       # esi = bg_b
+  movl 	%ecx, %edx        # edx = a
+  call 	blend_components  # eax = blend_components(fg_b, bg_b, a)
+  movzbl 	%al, %r10d        # r10d = final_b
 
-    /* blend_b = blend_components(fg_b, bg_b, a) */
-    movl 	%r10d, %edi       # edi = fg_b
-    movl 	%r11d, %esi       # esi = bg_b
-    movl 	%ecx, %edx        # edx = a
-    call 	blend_components  # eax = blend_components(fg_b, bg_b, a)
-    movzbl 	%al, %r10d        # r10d = final_b
+  /* uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255; */
+  movl 	$255, %eax        # a = 255
+  
+  # movl %r10d, %edx
+  shll 	$8, %r10d         # final_b << 8
+  orl 	%r10d, %eax       # (final_b << 8)
 
-    /* uint32_t result = (final_r << 24) | (final_g << 16) | (final_b << 8) | 255; */
-    movl 	$255, %eax        # a = 255
-    
-    # movl %r10d, %edx
-    shll 	$8, %r10d         # final_b << 8
-    orl 	%r10d, %eax       # (final_b << 8)
+  # movl  %r9d, %edx
+  shll 	$16, %r9d          # final_g << 16
+  orl 	%r9d, %eax         # (final_r << 24) | (final_g << 16)
 
-    # movl  %r9d, %edx
-    shll 	$16, %r9d          # final_g << 16
-    orl 	%r9d, %eax         # (final_r << 24) | (final_g << 16)
+  # movl  %r8d, %edx
+  shll 	$24, %r8d          # final_r << 24
+  orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
-    # movl  %r8d, %edx
-    shll 	$24, %r8d          # final_r << 24
-    orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
+  popq 	%r12
+  popq 	%rbx              # delete callee saved registers
+  ret
 
-    popq 	%r12
-	  popq 	%rbx              # delete callee saved registers
-    ret
-
+/* return(bg); */
 .Lreturn_bg:
     movl 	%r12d, %eax
     popq  %r12
     popq 	%rbx # delete callee saved registers
     ret
 
+/* return (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255# */
 .Lreturn_fg_full:
-  /* return (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255# */
   # (get_r(fg) << 24)
     movl 	%ebx, %edi    # ebx = fg
     call 	get_r
@@ -313,25 +326,30 @@ blend_colors:
     popq    %rbx          # delete callee saved registers
     ret
 
-/* set a pixel in the image array at the index */
+/*
+//
+// Set a pixel's color in the image data array at a specific index.
+//
+// Parameters:
+//   rdi = struct Image *img   - pointer to struct Image
+//   esi = uint32_t index - linear index in the image's data array
+//   edx = uint32_t color - uint32_t color value to be written
+//
+*/
+/* void set_pixel(struct Image *img, uint32_t index, uint32_t color) */
 .global set_pixel
 set_pixel:
-/* void set_pixel(struct Image *img, uint32_t index, uint32_t color) */
-  # rdi = img
-  # esi = index
-  # edx = color
-
   cmp   $0, %esi
   jl    .Lreturn_set_pixel
 
   movq 8(%rdi), %rcx        # 2 uint32 values (width, length in struct) store position of *data in %rcx
-  # img->data[index] = color#
+  # img->data[index] = color;
   movl    %esi, %eax        # eax = index
-  movslq %eax, %rax 
-  movl    %edx, (%rcx,%rax,4)   # data[index] = color     4 bytes * index
+  movslq %eax, %rax         # sign extend eax
+  movl    %edx, (%rcx,%rax,4)   # data[index] = color     4 bytes * index + data pointer
   ret
 
-  .Lreturn_set_pixel:
+.Lreturn_set_pixel:
   ret
 
 
@@ -340,18 +358,14 @@ set_pixel:
  *
  * Parameters:
  *   %rdi     - pointer to struct Image
- *   %esi     - x coordinate (pixel column)
- *   %edx     - y coordinate (pixel row)
+ *   %esi     - int32_t x coordinate (pixel column)
+ *   %edx     - int32_t y coordinate (pixel row)
  *   %ecx     - uint32_t color value
  */
+/* void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) */
 	.globl draw_pixel
 draw_pixel:
 	/* TODO: implement */
-  /* void draw_pixel(struct Image *img, int32_t x, int32_t y, uint32_t color) */
-  # rdi = img
-  # esi = x
-  # edx = y
-  # ecx = color
 
   pushq %rbp    # save rbp
   movq %rsp, %rbp  # set rbp to current stack pointer

@@ -31,6 +31,11 @@ int32_t in_bounds(struct Image *img, int32_t x, int32_t y) {
 
 // Compute the array index
 //
+//Parameters:
+//  img - pointer to Image
+//  x - x coordinate
+//  y - y coordinate
+//
 // Returns:
 // Index in the image data array corresponding to (x,y)
 //
@@ -125,7 +130,14 @@ uint32_t blend_colors(uint32_t fg, uint32_t bg){
   return result; 
 }
 
-//set a pixel in the image array at the index
+//
+// Set a pixel's color in the image data array at a specific index.
+//
+// Parameters:
+//   img   - pointer to struct Image
+//   index - linear index in the image's data array
+//   color - uint32_t color value to be written
+//
 void set_pixel(struct Image *img, uint32_t index, uint32_t color){
   if (index >= (uint32_t)(img->width * img->height)) return;
   img->data[index] = color;
