@@ -31,7 +31,8 @@ TEST_OBJS = $(TEST_SRCS:.c=.o)
 SECRET_TEST_SRCS = test_drawing_funcs_secret.c tctest.c
 SECRET_TEST_OBJS = $(SECRET_TEST_SRCS:.c=.o)
 
-EXES = c_draw c_test_drawing_funcs asm_draw asm_test_drawing_funcs
+EXES = c_draw c_test_drawing_funcs asm_draw asm_test_drawing_funcs c_test_drawing_funcs_secret asm_test_drawing_funcs_secret
+
 
 %.o : %.c
 	$(CC) $(CFLAGS) -c $*.c -o $*.o
