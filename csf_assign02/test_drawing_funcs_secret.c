@@ -863,6 +863,7 @@ void test_draw_pixel_secret_1(TestObjs *objs) {
   // in all four corners
 
   draw_pixel(&objs->small, 0, 0, 0xFC0000FF);
+  printf("actual:   0x%08X\n", objs->small.data[SMALL_IDX(0, 0)]);
   draw_pixel(&objs->small, 7, 0, 0xFC0000FF);
   draw_pixel(&objs->small, 0, 5, 0xFC0000FF);
   draw_pixel(&objs->small, 7, 5, 0xFC0000FF);

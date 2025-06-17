@@ -369,7 +369,7 @@ draw_pixel:
   movl %ecx, -32(%rbp)
 
   call compute_index
-  jz .return_empty
+  js .return_empty
 
   movq -8(%rbp), %rdi  # rdi = img
   movl -16(%rbp), %esi  # esi = x
