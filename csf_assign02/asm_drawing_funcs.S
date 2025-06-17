@@ -377,13 +377,20 @@ draw_pixel:
   call compute_index
   movl %eax, -40(%rbp)  # store index in stack
 
+  
   movq -8(%rbp), %rdi  # rdi = img pointer
   xorq %r10, %r10  # clear r10
+  movq 8(%rdi), %r11  # r11 = img->data pointer
   movl -40(%rbp), %r10d  # r10 = index
-  leaq (%rdi, %r10, 4), %r11  # r11 = img->data + index * 4
+  movslq %r10d, %r10  # sign extend index to 64-bit
+  leaq (%r11, %r10, 4), %r11  # r11 = img->data + index * 4
   movl (%r11), %esi
   movl %esi, -48(%rbp)  # store img->data[index] in stack
+  
 
+
+  movl -32(%rbp), %edi  # edi = color
+  movl -48(%rbp), %esi  # esi = background color
   call  blend_colors        # eax = color after blending
 
   movq -8(%rbp), %rdi  # r13 = img pointer
