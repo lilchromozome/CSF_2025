@@ -278,6 +278,12 @@ void test_blend_components_2() {
   ASSERT(blend_components(50, 200, 128) == ((50*128 + 200*127) / 255));
   // fg and bg same
   ASSERT(blend_components(100, 100, 128) == 100);
+  // alpha = 1
+  ASSERT(blend_components(100, 200, 1) == ((100 * 1 + 200 * 254) / 255));
+  // alpha = 254
+  ASSERT(blend_components(100, 200, 254) == ((100 * 254 + 200 * 1) / 255));
+  // alpha = 0
+  ASSERT(blend_components(100, 200, 0) == 200);
 }
 
 void test_blend_colors() {
@@ -300,6 +306,39 @@ void test_blend_colors() {
   // fg = (R=0, G=255, B=128), alpha=0
   // bg = blue, full alpha
   ASSERT(result4 == 0x0000FFFF);
+
+  // alpha = 0
+  ASSERT(blend_components(200, 100, 0) == 100);
+  // alpha = 255
+  ASSERT(blend_components(200, 100, 255) == 200);
+  //alpha = 128
+  ASSERT(blend_components(200, 100, 128) == ((200 * 128 + 100 * 127) / 255));
+  // alpha = 64
+  ASSERT(blend_components(200, 100, 64) == 125);
+  // alpha = 192
+  ASSERT(blend_components(200, 100, 192) == ((200 * 192 + 100 * 63) / 255));
+  // alpha = 1
+  ASSERT(blend_components(200, 100, 1) == ((200 * 1 + 100 * 254) / 255));
+  //alpha = 254
+  ASSERT(blend_components(200, 100, 254) == ((200 * 254 + 100 * 1) / 255));
+  // bg = fg
+  ASSERT(blend_components(123, 123, 0) == 123);
+  ASSERT(blend_components(123, 123, 255) == 123);
+  ASSERT(blend_components(123, 123, 128) == 123);
+  //fg = 0, bg = 255
+  ASSERT(blend_components(0, 255, 0) == 255);    
+  ASSERT(blend_components(0, 255, 128) == 127);   
+  ASSERT(blend_components(0, 255, 255) == 0); 
+  //fg = 255, bg = 0
+  ASSERT(blend_components(255, 0, 0) == 0);
+  ASSERT(blend_components(255, 0, 128) == 128);
+  ASSERT(blend_components(255, 0, 255) == 255);
+  // fg = 255, bg = 254
+  ASSERT(blend_components(255, 254, 255) == 255);
+  ASSERT(blend_components(255, 254, 128) >= 254); 
+  // a = 1, a = 254
+  ASSERT(blend_components(255, 254, 1) == ((255 * 1 + 254 * 254) / 255));
+  ASSERT(blend_components(255, 254, 254) == ((255 * 254 + 254 * 1) / 255));
 }
 
 void test_blend_colors_2() {
@@ -368,6 +407,15 @@ void test_draw_pixel(TestObjs *objs) {
   // test alpha = 0 (transparent pixel)
   draw_pixel(&objs->small, 5, 4, 0x00FF0000); // transparent red
   ASSERT(objs->small.data[SMALL_IDX(5, 4)] == 0x800080FF); // should remain magenta
+
+  draw_pixel(&objs->small, 1, 1, 0xFF0000FF); // transparent pixel
+  draw_pixel(&objs->small,1,1, 0x00FF0000); // transparent red
+  ASSERT(objs->small.data[SMALL_IDX(1, 1)] == 0xFF0000FF); // should remain black
+
+  //test alpha = 128 (semi-transparent pixel)
+  draw_pixel(&objs->small, 2, 2, 0x000000FF); // semi-transparent red
+  draw_pixel(&objs->small, 2, 2, 0x00FF0080); // semi-transparent red
+  ASSERT(objs->small.data[SMALL_IDX(2, 2)] == 0x008000FF);
 
   //test alpha = 255 (fully opaque pixel)
   draw_pixel(&objs->small, 6, 5, 0x00FF00FF); // fully opaque red
