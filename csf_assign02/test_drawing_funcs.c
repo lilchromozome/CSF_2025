@@ -258,6 +258,13 @@ void test_get_color_components_2() {
   ASSERT(get_g(color_inv) == 0x00);
   ASSERT(get_b(color_inv) == 0x00);
   ASSERT(get_a(color_inv) == 0x00);
+
+  uint32_t full = 0xFFFFFFFF;
+  ASSERT(get_r(full) == 0xFF);
+  ASSERT(get_g(full) == 0xFF);
+  ASSERT(get_b(full) == 0xFF);
+  ASSERT(get_a(full) == 0xFF);
+
 }
 
 void test_blend_components() {
@@ -339,6 +346,14 @@ void test_blend_colors() {
   // a = 1, a = 254
   ASSERT(blend_components(255, 254, 1) == ((255 * 1 + 254 * 254) / 255));
   ASSERT(blend_components(255, 254, 254) == ((255 * 254 + 254 * 1) / 255));
+  // black
+  ASSERT(blend_components(0, 0, 0) == 0);
+  // white
+  ASSERT(blend_components(255, 255, 0) == 255);
+  int res = blend_components(255, 255, 255);
+
+  ASSERT(res == 255);  
+  ASSERT(blend_components(1, 254, 127) == (1 * 127 + 254 * 128) / 255);
 }
 
 void test_blend_colors_2() {
@@ -356,6 +371,11 @@ void test_blend_colors_2() {
 void test_set_pixel(TestObjs *objs) {
   struct Image img = { .width = 10, .height = 6, .data = NULL};
   img.data = malloc(sizeof(uint32_t) * img.width * img.height);
+  
+  for (int i = 0; i < img.width * img.height; ++i) {
+    img.data[i] = 0xDEADBEEF;
+  }
+
   set_pixel(&img, 100, 0x12345678);
   set_pixel(&img, -1, 0x12345678);
   set_pixel(&img, 30, 0x12345678);
@@ -363,6 +383,16 @@ void test_set_pixel(TestObjs *objs) {
   set_pixel(&img, 60, 0x12345678);
   ASSERT(img.data[30] == 0x12345678);
   ASSERT(img.data[0] == 0x12345678);
+  ASSERT(img.data[1] == 0xDEADBEEF);
+  ASSERT(img.data[59] == 0xDEADBEEF);
+
+  int last = img.width * img.height - 1;
+  set_pixel(&img, last, 0xCAFEBABE);
+  ASSERT(img.data[last] == 0xCAFEBABE);
+
+  set_pixel(&img, 30, 0x11111111);
+  set_pixel(&img, 30, 0x22222222);
+  ASSERT(img.data[30] == 0x22222222);
 
   free(img.data); 
 
