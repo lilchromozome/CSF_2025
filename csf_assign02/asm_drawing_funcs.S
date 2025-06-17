@@ -202,7 +202,7 @@ blend_colors:
 
     /* if (a == 0) return bg */
     cmpb 	$0, %al
-    je 		.return_bg
+    je 		.Lreturn_bg
 
     /* if (a == 255) return fg with a = 255 */
     cmpb 	$255, %al
