@@ -551,7 +551,7 @@ draw_circle:
 
   /* if (r < 0) return */
   cmpl    $0, %ecx
-  jl      .done_circle
+  jl      .Ldone_circle
 
   # x_min = x - r
   # x_max = x + r
@@ -630,7 +630,7 @@ draw_circle:
 
   addl    %edx, %eax        # eax = diff_x^2 + diff_y^2
   cmpl    %r15d, %eax       # r^2 - eax > 0
-  jg      .skip_draw
+  jg      .Lskip_draw
 
   # draw_pixel(img, j, i, color)
   movl    %ecx, %esi        # esi = j
@@ -654,4 +654,45 @@ draw_circle:
     popq    %r12
     ret
 
-```
+/*
+ * Draw a tile by copying all pixels in the region
+ * enclosed by the tile parameter in the tilemap image
+ * to the specified x/y coordinates of the destination image.
+ * No blending of the tile pixel colors with the background
+ * colors should be done.
+ *
+ * Parameters:
+ *   %rdi - pointer to Image (dest image)
+ *   %esi - x coordinate of location where tile should be copied
+ *   %edx - y coordinate of location where tile should be copied
+ *   %rcx - pointer to Image (the tilemap)
+ *   %r8  - pointer to Rect (the tile)
+ */
+	.globl draw_tile
+draw_tile:
+	/* TODO: implement */
+	ret
+
+/*
+ * Draw a sprite by copying all pixels in the region
+ * enclosed by the sprite parameter in the spritemap image
+ * to the specified x/y coordinates of the destination image.
+ * The alpha values of the sprite pixels should be used to
+ * blend the sprite pixel colors with the background
+ * pixel colors.
+ *
+ * Parameters:
+ *   %rdi - pointer to Image (dest image)
+ *   %esi - x coordinate of location where sprite should be copied
+ *   %edx - y coordinate of location where sprite should be copied
+ *   %rcx - pointer to Image (the spritemap)
+ *   %r8  - pointer to Rect (the sprite)
+ */
+	.globl draw_sprite
+draw_sprite:
+	/* TODO: implement */
+	ret
+
+/*
+vim:ft=gas:
+*/
