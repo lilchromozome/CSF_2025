@@ -432,8 +432,8 @@ draw_rect:
                uint32_t color) */
 
   pushq %r12        # calleee saved register
-  movl  %edx, %r12d # r12 = color
-
+ 
+  movl  %edx, %r12d     # r12d = color
   /* if (rect->width <= 0 || rect->height <= 0) return; */
   movl    8(%rsi), %eax        # eax = rect->width
   cmpl    $0, %eax
