@@ -83,9 +83,11 @@ compute_index:
   # rdi = struct Image *img
   # esi = int32 x
   # edx = int32 y
+  subq $8, %rsp    # align stack
 
   /* if(!in_bounds(img, x, y)) return -1; */
   call in_bounds            # in_bounds(img, x, y)
+  addq $8, %rsp           # restore stack
   cmpl $0, %eax            /* if eax == 0, not in bounds */
   je .Lreturn_neg1          # return -1
 
@@ -165,6 +167,7 @@ blend_components:
   pushq   %r10          # callee saved for a
   pushq   %rcx
   pushq   %rdx
+  subq    $48, %rsp    # align stack (5+1)*8 = 48 mod 16 = 0
   movl    %edi, %r8d     # r8d = fg
   movl    %esi, %r9d     # r9d = bg
   movl    %edx, %r10d    # r10d = alpha
@@ -182,6 +185,7 @@ blend_components:
   divl 	%ecx               # eax = edx:eax / ecx
 
   # return (uint8_t) result#
+  addq   $48, %rsp       # restor stack
   popq   %rdx         # clear all local registers
   popq   %rcx
   popq   %r10
@@ -205,6 +209,7 @@ blend_colors:
   # save fg and bg on stack
   pushq 	%rbx              # rbx = callee saved fg
   pushq 	%r12              # r12 = callee saved bg.
+  subq    $16, %rsp
   movl 	%edi, %ebx        # ebx = fg
   movl 	%esi, %r12d 		# r12 = bg
 
@@ -286,6 +291,7 @@ blend_colors:
   shll 	$24, %r8d          # final_r << 24
   orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
+  addq  $16, %rsp
   popq 	%r12
   popq 	%rbx              # delete callee saved registers
   ret
@@ -293,6 +299,7 @@ blend_colors:
 /* return(bg); */
 .Lreturn_bg:
     movl 	%r12d, %eax
+    addq  $16, %rsp
     popq  %r12
     popq 	%rbx # delete callee saved registers
     ret
@@ -322,6 +329,7 @@ blend_colors:
     orl     $255, %ecx    # (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255
     movl    %ecx, %eax    
 
+    addq  $16, %rsp
     popq    %r12
     popq    %rbx          # delete callee saved registers
     ret
@@ -430,11 +438,11 @@ draw_rect:
   # void draw_rect(struct Image *img, const struct Rect *rect, uint32_t color)
   # %rdi = img, %rsi = rect, %edx = color
 
-  pushq %r12
-  pushq %r13
-  pushq %r14
+  pushq   %r12                # callee-saved
+  pushq   %r13                # callee-saved
+  pushq   %r14                # callee-saved
+  subq    $32, %rsp           # align stack (3 + 1) * 8 = 32 mod 16 = 0
   
-
   movl %edx, %r12d           # save color in %r12d
 
   movl 8(%rsi), %eax         # width
@@ -503,7 +511,7 @@ draw_rect:
   jmp .Lrow_loop
 
 .Ldone:
-  
+  addq $32, %rsp   # restore stack 
   popq %r14
   popq %r13
   popq %r12
@@ -525,10 +533,12 @@ draw_rect:
 draw_circle:
 	/* TODO: implement */
   /* void draw_circle(struct Image *img, int32_t x, int32_t y, int32_t r, uint32_t color) */
+
   pushq   %r12
   pushq   %r13
   pushq   %r14
   pushq   %r15
+  subq    $32, %rsp
 
   movl    %r8d, %r12d       # r12 = color
   movl    %esi, %r13d       # r13 = x
@@ -634,6 +644,7 @@ draw_circle:
 
 .Ldone_circle:
     # Restore stack
+    addq    $32, %rsp
     popq    %r15
     popq    %r14
     popq    %r13
