@@ -461,7 +461,6 @@ void test_draw_pixel(TestObjs *objs) {
 }
 
 void test_draw_rect(TestObjs *objs) {
-  return; // TODO: remove this line when implementing the test
   struct Rect red_rect = { .x = 2, .y = 2, .width=3, .height=3 };
   struct Rect blue_rect = { .x = 3, .y = 3, .width=3, .height=3 };
   draw_rect(&objs->small, &red_rect, 0xFF0000FF); // red is full-intensity, full opacity
@@ -486,7 +485,6 @@ void test_draw_rect(TestObjs *objs) {
 }
 
 void test_draw_circle(TestObjs *objs) {
-  return; // TODO: remove this line when implementing the test
   Picture expected = {
     { {' ', 0x000000FF}, {'x', 0x00FF00FF} },
     "   x    "
@@ -503,7 +501,6 @@ void test_draw_circle(TestObjs *objs) {
 }
 
 void test_draw_circle_clip(TestObjs *objs) {
-  return; // TODO: remove this line when implementing the test
   Picture expected = {
     { {' ', 0x000000FF}, {'x', 0x00FF00FF} },
     " xxxxxxx"
@@ -520,7 +517,6 @@ void test_draw_circle_clip(TestObjs *objs) {
 }
 
 void test_draw_tile(TestObjs *objs) {
-  return; // TODO: remove this line when implementing the test
   ASSERT(read_image("img/PrtMimi.png", &objs->tilemap) == IMG_SUCCESS);
 
   struct Rect r = { .x = 4, .y = 2, .width = 16, .height = 18 };
@@ -563,7 +559,6 @@ void test_draw_tile(TestObjs *objs) {
 }
 
 void test_draw_sprite(TestObjs *objs) {
-  return; // TODO: remove this line when implementing the test
   ASSERT(read_image("img/NpcGuest.png", &objs->spritemap) == IMG_SUCCESS);
 
   struct Rect r = { .x = 1, .y = 1, .width = 14, .height = 14 };
