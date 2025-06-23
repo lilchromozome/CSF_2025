@@ -511,7 +511,7 @@ draw_rect:
   jmp .Lrow_loop
 
 .Ldone:
-  addq $32, %rsp   # restore stack 
+  addq $32, %rsp 
   popq %r14
   popq %r13
   popq %r12
@@ -571,27 +571,30 @@ draw_circle:
   */ 
 
   # clamp: y_min = max(0, y_min)
-  movl    $0, %ecx        # ecx = 0
   cmpl    $0, %r10d
-  cmovl   %ecx, %r10d     # r10 = y_min
+  jge     .Lskip_ymin
+  movl    $0, %r10d
+  .Lskip_ymin:
 
   # x_min = max(0, x_min)
   cmpl    $0, %r8d
-  cmovl   %ecx, %r8d       # r8 = x_min
+  jge     .Lskip_xmin
+  movl    $0, %r8d
+  .Lskip_xmin:
 
   # y_max = min(img->height, y_max)
   movl    4(%rdi), %eax     # eax = img->height
-  movl    %r11d, %ecx
-  cmpl    %ecx, %eax        # if img->height < y_max
-  cmovl   %eax, %ecx
-  movl    %ecx, %r11d       # r11 = y_max
+  cmpl    %eax, %r11d
+  jl      .Lskip_ymax
+  movl    %eax, %r11d
+  .Lskip_ymax:
 
   # x_max = min(img->width, x_max)
   movl    (%rdi), %eax      # eax = img->width
-  movl    %r9d, %ecx
-  cmpl    %ecx, %eax        # if img->width < x_max
-  cmovl   %eax, %ecx
-  movl    %ecx, %r9d        # r9 = x_max
+  cmpl    %eax, %r9d
+  jl      .Lskip_xmax
+  movl    %eax, %r9d
+  .Lskip_xmax:
 
 # y loop: for (int32_t i = y_min; i <= y_max; ++i)
 .Ly_loop:
@@ -611,7 +614,7 @@ draw_circle:
   testl   %eax, %eax
   je      .Ladvance_x
 
-  # compute diff_x = center_x - j
+    # compute diff_x = center_x - j
   movl    %r13d, %eax       # eax = center_x
   subl    %ecx, %eax        # eax = diff_x
   imull   %eax, %eax        # eax = diff_x^2
@@ -621,11 +624,15 @@ draw_circle:
   subl    %r10d, %edx       # edx = diff_y
   imull   %edx, %edx        # edx = diff_y^2
 
-  /*  if (diff_x * diff_x + diff_y * diff_y <= r * r)  */
-  imull   %r15d, %r15d      # r15d = r * r
-
+  # total squared distance
   addl    %edx, %eax        # eax = diff_x^2 + diff_y^2
-  cmpl    %r15d, %eax       # r^2 - eax > 0
+
+  # compute r^2
+  movl    %r15d, %ebx       # ebx = r
+  imull   %r15d, %ebx       # ebx = r * r
+
+  # compare
+  cmpl    %ebx, %eax        # if (diff^2 > r^2)
   jg      .Ladvance_x
 
   # draw_pixel(img, j, i, color)
