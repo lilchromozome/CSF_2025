@@ -441,82 +441,62 @@ draw_rect:
   pushq   %r12                # callee-saved
   pushq   %r13                # callee-saved
   pushq   %r14                # callee-saved
+  pushq   %r15                # callee-saved
+  pushq   %rbx
   subq    $32, %rsp           # align stack (3 + 1) * 8 = 32 mod 16 = 0
   
-  movl %edx, %r12d           # save color in %r12d
+  movq %rdi, %r12          # r12 = img pointer
+  movq %rsi, %r13          # r13 = rect pointer
+  movl %edx, %r14d           # r14d = color
 
-  movl 8(%rsi), %eax         # width
-  testl %eax, %eax
-  jle .Ldone
-
-  movl 12(%rsi), %eax        # height
-  testl %eax, %eax
-  jle .Ldone
-
-  # min_x = rect->x, min_y = rect->y
-  movl 0(%rsi), %r8d         # min_x
-  movl 4(%rsi), %r9d         # min_y
+  # Load rect->x, rect->y, rect->width, rect->height
+  movl RECT_X_OFFSET(%r13), %esi     
+  movl RECT_Y_OFFSET(%r13), %edx
+  movl RECT_WIDTH_OFFSET(%r13), %r8d
+  movl RECT_HEIGHT_OFFSET(%r13), %r9d
 
   # max_x = rect->x + rect->width
-  movl %r8d, %r10d
-  addl 8(%rsi), %r10d
+  movl %r8d, %r15d
+  addl %esi, %r15d
 
   # max_y = rect->y + rect->height
-  movl %r9d, %r11d
-  addl 12(%rsi), %r11d
+  movl %r9d, %ebx
+  addl %edx, %ebx
 
-  # clip min_x to >= 0
-  cmpl $0, %r8d
-  jge .Lclip_min_y
-  movl $0, %r8d
-  .Lclip_min_y:
+.Lrect_row_loop:
+  cmpl %ebx, %edx          # if row >= max_y
+  jge .Ldraw_rect_done
 
-  # clip min_y to >= 0
-  cmpl $0, %r9d
-  jge .Lclip_max_x
-  movl $0, %r9d
-  .Lclip_max_x:
+  movl RECT_X_OFFSET(%r13), %esi  # reset col to rect->x
 
-  # clip max_x to <= img->width
-  movl 0(%rdi), %eax         # img->width
-  jle .Lclip_max_y
-  movl %eax, %r10d
-  .Lclip_max_y:
-
-  # clip max_y to <= img->height
-  movl 4(%rdi), %eax         # img->height
-  cmpl %eax, %r11d
-  jle .Lstart_loops
-  movl %eax, %r11d
-  .Lstart_loops:
-
-  # for (int row = min_y; row < max_y; row++)
-  movl %r9d, %r14d           # r14d = row
-
-.Lrow_loop:
-  cmpl %r11d, %r14d           # if row >= max_y
-  jge .Ldone
-  movl %r8d, %r13d           # r15d = col
-
-.Lcol_loop:
-  cmpl %r10d, %r13d           # if col >= max_x
-  jge .Lnext_row
+.Lrect_col_loop:
+  cmpl %r15d, %esi        # if col >= max_x
+  jge .Lrect_end_col_loop
 
   # draw_pixel(img, col, row, color)
-  movl %r13d, %esi           # x = col
-  movl %r14d, %edx           # y = row
-  movl %r12d, %ecx           # color
+  movq %r12, %rdi           # img
+  movl %r14d, %ecx          # color
+  pushq %rsi
+  pushq %rdx
+  pushq %r8
+  pushq %r9
   call draw_pixel
+  popq %r9
+  popq %r8
+  popq %rdx
+  popq %rsi
 
-  incl %r13d
-  jmp .Lcol_loop
+  incl %esi
+  jmp .Lrect_col_loop
 
-.Lnext_row:
-  incl %r14d
-  jmp .Lrow_loop
+.Lrect_end_col_loop:
+  incl %edx
+  jmp .Lrect_row_loop
 
-.Ldone:
-  addq $32, %rsp 
+.Ldraw_rect_done:
+  addq $32, %rsp             # restore stack
+  popq %rbx
+  popq %r15
   popq %r14
   popq %r13
   popq %r12
@@ -822,11 +802,12 @@ draw_tile:
 
 .Lskip_pixel:
   incl %r13d                # row++
-  jmp .Lrow_loop
+  jmp .Lrow_loop_tile
+
 
 .Lnext_col:
   incl %r12d                # col++
-  jmp .Lcol_loop
+  jmp .Lcol_loop_tile
 
 .Ldone_tile:
   popq %rbp
