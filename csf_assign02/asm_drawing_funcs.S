@@ -425,104 +425,90 @@ draw_pixel:
  *   %rsi     - pointer to struct Rect
  *   %edx     - uint32_t color value
  */
-	.globl draw_rect
+.globl draw_rect
 draw_rect:
-	/* void draw_rect(struct Image *img,
-               const struct Rect *rect,
-               uint32_t color) */
+  # void draw_rect(struct Image *img, const struct Rect *rect, uint32_t color)
+  # %rdi = img, %rsi = rect, %edx = color
 
-  pushq %r12        # calleee saved register
- 
-  movl  %edx, %r12d     # r12d = color
-  /* if (rect->width <= 0 || rect->height <= 0) return; */
-  movl    8(%rsi), %eax        # eax = rect->width
-  cmpl    $0, %eax
-  jle     .Ldone_rect
-  movl    12(%rsi), %eax       # eax = rect->height
-  cmpl    $0, %eax
-  jle     .Ldone_rect
+  pushq %r12
+  pushq %r13
+  pushq %r14
+  
 
-  /*
-  int32_t min_x = rect->x;
-  int32_t min_y = rect->y;
-  int32_t max_x = rect->x + rect->width;
-  int32_t max_y = rect->y + rect->height;
-  */
+  movl %edx, %r12d           # save color in %r12d
 
-  movl    (%rsi), %r8d         # r8d = min_x = rect->x
-  movl    4(%rsi), %r9d        # r9d = min_y = rect->y
+  movl 8(%rsi), %eax         # width
+  testl %eax, %eax
+  jle .Ldone
 
-  movl    %r8d, %r10d          # r10d = min_x
-  addl    8(%rsi), %r10d       # r10d = max_x
+  movl 12(%rsi), %eax        # height
+  testl %eax, %eax
+  jle .Ldone
 
-  movl    %r9d, %r11d          # r11d = min_y
-  addl    12(%rsi), %r11d      # r11d = max_y
+  # min_x = rect->x, min_y = rect->y
+  movl 0(%rsi), %r8d         # min_x
+  movl 4(%rsi), %r9d         # min_y
 
-  /*
-  if (min_x < 0) min_x = 0;
-  if (min_y < 0) min_y = 0;
-  if (max_x > img->width) max_x = img->width;
-  if (max_y > img->height) max_y = img->height;
-  */
+  # max_x = rect->x + rect->width
+  movl %r8d, %r10d
+  addl 8(%rsi), %r10d
 
-  # min x < 0
-  movl    %r8d, %eax       # eax = rect->x
-  cmpl    $0, %eax
-  movl    $0, %ecx
-  cmovl   %ecx, %r8d        # r8 = new x min
+  # max_y = rect->y + rect->height
+  movl %r9d, %r11d
+  addl 12(%rsi), %r11d
 
-  # min y < 0
-  movl    %r9d, %eax      # eax = rext->y
-  cmpl    $0, %eax
-  movl    $0, %ecx
-  cmovl   %ecx, %r9d      # r9 = new y min
+  # clip min_x to >= 0
+  cmpl $0, %r8d
+  movl $0, %ecx
+  cmovl %ecx, %r8d
 
-  # max x > img_>width
-  movl    (%rdi), %eax        # eax = img->width
-  cmpl    %r10d, %eax
-  movl    %r10d, %ecx
-  cmovg   %eax, %ecx          
-  movl    %ecx, %r10d         # r10 = new max x
+  # clip min_y to >= 0
+  cmpl $0, %r9d
+  movl $0, %ecx
+  cmovl %ecx, %r9d
 
-  # max y > img-> height
-  movl    4(%rdi), %eax       # eax = img->height
-  cmpl    %r11d, %eax
-  movl    %r11d, %ecx
-  cmovg   %eax, %ecx
-  movl    %ecx, %r11d         # r11 = new max y
+  # clip max_x to <= img->width
+  movl 0(%rdi), %eax         # img->width
+  cmpl %eax, %r10d
+  cmovg %eax, %r10d
 
-.Lloop_start:
-  movl    %r8d, %ecx          # ecx = col
+  # clip max_y to <= img->height
+  movl 4(%rdi), %eax         # img->height
+  cmpl %eax, %r11d
+  cmovg %eax, %r11d
 
-.Lcol_loop:
-/*   for (int32_t col = min_x; col < max_x; ++col) { */
-  cmpl    %r10d, %ecx         # if col >= max_x
-  jge     .Ldone_rect
-
-/* for (int32_t row = min_y; row < max_y; ++row) */
-  movl    %r9d, %edx          # edx = row
+  # for (int row = min_y; row < max_y; row++)
+  movl %r9d, %r14d           # r14d = row
 
 .Lrow_loop:
-  cmpl    %r11d, %edx         # if row >= max_y
-  jge     .Lnext_col
+  cmpl %r11d, %r14d           # if row >= max_y
+  jge .Ldone
+  movl %r8d, %r13d           # r15d = col
 
-  # draw_pixel(img, col, row, color);
-                              # rdi = img 
-  movl    %ecx, %esi          # esi = x = col
-                              # edx =  = row
-  movl    %r12d, %ecx         # ecx = color
+.Lcol_loop:
+  cmpl %r10d, %r13d           # if col >= max_x
+  jge .Lnext_row
+
+  # draw_pixel(img, col, row, color)
+  movl %r13d, %esi           # x = col
+  movl %r14d, %edx           # y = row
+  movl %r12d, %ecx           # color
   call draw_pixel
 
-  incl    %edx                # ++row
-  jmp     .Lrow_loop
+  incl %r13d
+  jmp .Lcol_loop
 
-.Lnext_col:
-    incl    %ecx                # ++col
-    jmp     .Lcol_loop
+.Lnext_row:
+  incl %r14d
+  jmp .Lrow_loop
 
-.Ldone_rect:
-    popq    %r12                 # restore
-    ret
+.Ldone:
+  
+  popq %r14
+  popq %r13
+  popq %r12
+  ret
+
 
 /*
  * Draw a circle.

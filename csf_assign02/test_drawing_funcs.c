@@ -481,7 +481,29 @@ void test_draw_rect(TestObjs *objs) {
     "   bbb  "
   };
 
+  //test
+  struct Image *img = &objs->small;
+  for (int y = 0; y < img->height; y++) {
+    for (int x = 0; x < img->width; x++) {
+      char expected_char = expected.pic[y * img->width + x];
+      uint32_t expected_color = black;
+      for (int i = 0; i < 4; i++) {
+        if (expected.colors[i].c == expected_char) {
+          expected_color = expected.colors[i].color;
+          break;
+        }
+      }
+      uint32_t actual_color = img->data[y * img->width + x];
+      if (actual_color != expected_color) {
+        printf("Pixel mismatch at (%d, %d): expected 0x%08X, got 0x%08X\n",
+               x, y, expected_color, actual_color);
+        ASSERT(actual_color == expected_color);
+      }
+    }
+  }
+
   check_picture(&objs->small, &expected);
+
 }
 
 void test_draw_circle(TestObjs *objs) {
