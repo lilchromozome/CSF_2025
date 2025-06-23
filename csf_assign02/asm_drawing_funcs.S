@@ -657,6 +657,153 @@ draw_circle:
 	.globl draw_tile
 draw_tile:
 	/* TODO: implement */
+  # rdi = img
+  # rsi = tilemap
+  # edx = tile_x
+  # ecx = tile_y
+  # r8d = x
+  # r9d = y
+
+  pushq %rbx
+  pushq %r12
+  pushq %r13
+  pushq %r14
+  pushq %r15
+  pushq %rbp
+
+  movl 0(%r8), %r9d
+  movl 4(%r8), %r10d
+  movl 8(%r8), %r11d
+  movl 12(%r8), %ebp
+
+  #boundary check
+  cmpl $0, %r9d
+  jl .Ldone_tile
+  cmpl $0, %r10d
+  jl .Ldone_tile
+
+  movl 0(%rcx), %eax  # tilemap->width
+  movl %r9d, %ebx
+  addl %r11d, %ebx
+  cmpl %eax, %ebx
+  jg .Ldone_tile
+
+  movl 4(%rcx), %eax  # tilemap->height
+  movl %r10d, %ebx
+  addl %ebp, %ebx
+  cmpl %eax, %ebx
+  jg .Ldone_tile
+
+  #
+  xorl %r12d, %r12d  # r12 = tilemap->width
+  xorl %r13d, %r13d  # r13 = tilemap->height
+  movl %r11d, %r14d
+  movl %ebp, %r15d
+
+  cmpl $0, %esi
+  jge .Lcheck_y
+  movl %esi, %eax
+  negl %eax             # negate x coordinate
+  movl %eax, %r12d
+  subl %eax, %r14d
+  xorl %esi, %esi  # set x coordinate to 0
+
+  .Lcheck_y:
+    cmpl $0, %edx
+    jge .Lclip_bounds
+    movl %edx, %eax
+    negl %eax             
+    movl %eax, %r13d
+    subl %eax, %r15d
+    xorl %edx, %edx  # set y coordinate to 0
+
+  .Lclip_bounds:
+  # width = min(width, img->width - x)
+    movl 0(%rdi), %eax  # img->width
+    subl %esi, %eax
+    cmpl %eax, %r14d
+    cmovg %eax, %r14d  # r14 = img->width - x
+
+    # height = min(height, img->height - y)
+    movl 4(%rdi), %eax  # img->height
+    subl %edx, %eax
+    cmpl %eax, %r15d
+    cmovg %eax, %r15d  # r15 = img->height
+
+    movl 0(%rcx), %eax  # tilemap->width
+    subl %r9d, %eax
+    subl %r12d, %eax
+    cmpl %eax, %r14d
+    cmovg %eax, %r14d
+
+    movl 4(%rcx), %eax
+    subl %r10d, %eax
+    subl %r13d, %eax
+    cmpl %eax, %r15d
+    cmovg %eax, %r15d
+
+    #width and height negative
+    cmpl $0, %r14d
+    jle .Ldone_tile
+    cmpl $0, %r15d
+    jle .Ldone_tile
+
+    xorl %ebx, %ebx  # ebx = 0
+
+  .Lcol_loop_tile:
+    cmpl %r14d, %ebx  # if (col >= width)
+    jge .Ldone_tile
+    xorl %r12d, %r12d  # r12 = 0
+  .Lrow_loop_tile:
+    cmpl %r15d, %eax
+    jge .Lnext_col
+
+    #comput index
+    movl %esi, %r8d
+    addl %ebx, %r8d  # r8d = x + col
+    movl %edx, %r9d
+    addl %eax, %r9d  # r9d = y + row
+  
+    call compute_index
+    movl %eax, %r10d  # r10 = index
+
+    # compute_index(tilemap, tile->x + start_col + col, tile->y + start_row + row)
+    movl %r9d, %r8d
+    movl %r10d, %r9d
+
+    movl %r9d, %r11d  # r11 = tile->y + start_row + row
+    addl %r12d, %r11d
+    addl %ebx, %r11d  # r11 = tile->y + start_row + row + col
+    movl %r10d, %r12d  # r12 = tile->x + start_col + col
+    addl %r13d, %r12d
+    addl %eax, %r12d  # r12 = tile->x + start_col + col + row
+    movq %rcx, %rdi  # rdi = tilemap
+    movl %r11d, %r8d
+    movl %r12d, %r9d  # r8 = x, r9 = y
+    call compute_index
+    movl %eax, %r11d  # r11 = tilemap index
+
+    # img->data[index_img] = tilemap->data[index_tile]
+    movq 16(%rdi), %rdi
+    movq 16(%rcx), %rcx
+    movl (%rcx,%r11,4), %r12d
+    movl %r12d, (%rdi,%r10,4)
+
+    incl %eax  # row++
+    jmp .Lrow_loop
+
+  .Lnext_col:
+    incl %ebx  # col++
+    jmp .Lcol_loop
+
+  .Ldone_tile:
+  popq %rbp
+  popq %r15
+  popq %r14
+  popq %r13
+  popq %r12
+  popq %rbx
+
 	ret
 
 /*
