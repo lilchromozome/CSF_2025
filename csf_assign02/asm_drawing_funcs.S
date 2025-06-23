@@ -467,23 +467,28 @@ draw_rect:
 
   # clip min_x to >= 0
   cmpl $0, %r8d
-  movl $0, %ecx
-  cmovl %ecx, %r8d
+  jge .Lclip_min_y
+  movl $0, %r8d
+  .Lclip_min_y:
 
   # clip min_y to >= 0
   cmpl $0, %r9d
-  movl $0, %ecx
-  cmovl %ecx, %r9d
+  jge .Lclip_max_x
+  movl $0, %r9d
+  .Lclip_max_x:
 
   # clip max_x to <= img->width
   movl 0(%rdi), %eax         # img->width
-  cmpl %eax, %r10d
-  cmovg %eax, %r10d
+  jle .Lclip_max_y
+  movl %eax, %r10d
+  .Lclip_max_y:
 
   # clip max_y to <= img->height
   movl 4(%rdi), %eax         # img->height
   cmpl %eax, %r11d
-  cmovg %eax, %r11d
+  jle .Lstart_loops
+  movl %eax, %r11d
+  .Lstart_loops:
 
   # for (int row = min_y; row < max_y; row++)
   movl %r9d, %r14d           # r14d = row
