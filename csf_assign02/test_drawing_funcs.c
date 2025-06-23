@@ -497,6 +497,7 @@ void test_draw_rect(TestObjs *objs) {
       if (actual_color != expected_color) {
         printf("Pixel mismatch at (%d, %d): expected 0x%08X, got 0x%08X\n",
                x, y, expected_color, actual_color);
+        printf("rect->x = %d, rect->width = %d\n", red_rect.x, red_rect.width);
         ASSERT(actual_color == expected_color);
       }
     }
