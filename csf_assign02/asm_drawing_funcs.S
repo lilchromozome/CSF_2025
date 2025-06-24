@@ -827,7 +827,6 @@ draw_circle:
 draw_sprite:
     # save registers
     pushq %rbp
-    movq %rsp, %rbp
     pushq %rbx              # temp var for index
     pushq %r12              # callee saved col counter
     pushq %r13              # calleee saved row counter
@@ -886,9 +885,9 @@ draw_sprite:
 
     # uint32_t index = compute_index(spritemap, sprite->x + col, sprite->y + row);
     movq  %rcx, %rdi               # 1st arg for compute_index, spritemap
-    movl  (%r8d), %esi             # 2nd arg for compute_index, sprite->x + col
+    movl  (%r8), %esi             # 2nd arg for compute_index, sprite->x + col
     addl  %r12d, %esi
-    movl  4(%r8d), %edx             # 3rd arg for compute_index, sprite->y + row
+    movl  4(%r8), %edx             # 3rd arg for compute_index, sprite->y + row
     addl  %r13d, %edx
     call  compute_index
     cmpl $-1, %eax                  # eax = index
