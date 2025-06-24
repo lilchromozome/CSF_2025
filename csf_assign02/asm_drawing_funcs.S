@@ -668,20 +668,22 @@ draw_circle:
 draw_tile:
   # rdi = img
   # rsi = tilemap
-  # edx = tile_x
-  # ecx = tile_y
-  # r8d = x
-  # r9d = y
+  # edx = x
+  # ecx = y
+  # r8  = pointer to Rect tile
 
   pushq %rbx
+  pushq %r8
+  pushq %r9
   pushq %r12
   pushq %r13
   pushq %r14
   pushq %r15
   pushq %rbp
+  subq $32, %rsp           # align stack
 
   # Load tile->x, tile->y, tile->width, tile->height
-  movl 0(%r8), %r10d        # tile_x
+  movl RECT_X_OFFSET(%r8), %r10d        # tile_x
   movl 4(%r8), %r11d        # tile_y
   movl 8(%r8), %r12d        # tile_width
   movl 12(%r8), %r13d       # tile_height
