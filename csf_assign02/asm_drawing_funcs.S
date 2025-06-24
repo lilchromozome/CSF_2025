@@ -449,66 +449,56 @@ draw_rect:
   # void draw_rect(struct Image *img, const struct Rect *rect, uint32_t color)
   # %rdi = img, %rsi = rect, %edx = color
 
-  pushq   %r12                # callee-saved img
-  pushq   %r13                # callee-saved
-  pushq   %r14                # callee-saved
-  pushq   %r15                # callee-saved
-  pushq   %rbx
-  subq    $32, %rsp           # align stack (3 + 1) * 8 = 32 mod 16 = 0
+  pushq   %r12                # callee-saved rect
+  pushq   %r13                # callee-saved color
+  pushq   %r14                # callee-saved  max_x
+  pushq   %r15                # callee-saved  max_y
+  subq    $48, %rsp           # align stack (3 + 1) * 8 = 32 mod 16 = 0
   
-  movq %rdi, %r12          # r12 = img pointer
-  movq %rsi, %r13          # r13 = rect pointer
-  movl %edx, %r14d           # r14d = color
+  movq %rsi, %r12          # r12 = rect pointer
+  movl %edx, %r13d           # r13d = color
 
   # Load rect->x, rect->y, rect->width, rect->height
-  movl RECT_X_OFFSET(%r13), %esi     
-  movl RECT_Y_OFFSET(%r13), %edx
-  movl RECT_WIDTH_OFFSET(%r13), %r8d
-  movl RECT_HEIGHT_OFFSET(%r13), %r9d
+  movl RECT_X_OFFSET(%r12), %esi        # esi = col
+  movl RECT_Y_OFFSET(%r12), %edx        # edx = row
+  movl RECT_WIDTH_OFFSET(%r12), %r14d
+  movl RECT_HEIGHT_OFFSET(%r12), %r15d
 
   # max_x = rect->x + rect->width
-  movl %r8d, %r15d
-  addl %esi, %r15d
+  addl %esi, %r14d      
 
   # max_y = rect->y + rect->height
-  movl %r9d, %ebx
-  addl %edx, %ebx
+  addl %edx, %r15d
 
 .Lrect_row_loop:
-  cmpl %ebx, %edx          # if row >= max_y
+  cmpl %r15d, %edx          # if row >= max_y
   jge .Ldraw_rect_done
 
-  movl RECT_X_OFFSET(%r13), %esi  # reset col to rect->x
+  movl RECT_X_OFFSET(%r12), %esi  # reset col to rect->x
 
 .Lrect_col_loop:
-  cmpl %r15d, %esi        # if col >= max_x
+  cmpl %r14d, %esi        # if col >= max_x
   jge .Lrect_end_col_loop
 
   # draw_pixel(img, col, row, color)
-  movq %r12, %rdi           # img
-  movl %r14d, %ecx          # color
-  pushq %rsi
-  pushq %rdx
-  pushq %r8
-  pushq %r9
-  subq    $32, %rsp 
+  movl %r13d, %ecx          # restore color to 4th arg
+  pushq %rsi                # save col to stack
+  pushq %rdx                # save row to stack
+  subq    $32, %rsp         # align stack
   call draw_pixel
-  addq    $32, %rsp 
-  popq %r9
-  popq %r8
-  popq %rdx
+  addq    $32, %rsp         # restore stack and arg vars
+  popq %rdx                 
   popq %rsi
 
-  incl %esi
+  incl %esi                  # move to next col
   jmp .Lrect_col_loop
 
 .Lrect_end_col_loop:
-  incl %edx
+  incl %edx                   # move to next row
   jmp .Lrect_row_loop
 
 .Ldraw_rect_done:
-  addq $32, %rsp             # restore stack
-  popq %rbx
+  addq $48, %rsp             # restore stack
   popq %r15
   popq %r14
   popq %r13
@@ -625,10 +615,10 @@ draw_circle:
   movl    %r10d, %esi        # esi = j
   movl    %r11d, %edx       # edx = i
   call    in_bounds
-  movl    (%rsp), %esi
+  movl    (%rsp), %esi        # restor vars and pointer
   movl    4(%rsp), %edx
   addq    $16, %rsp
-  cmpl    $0, %eax
+  cmpl    $0, %eax            # if not in bounds, skip
   je      .Lnext_x
   
 
