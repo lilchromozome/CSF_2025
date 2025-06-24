@@ -480,7 +480,9 @@ draw_rect:
   pushq %rdx
   pushq %r8
   pushq %r9
+  subq    $32, %rsp 
   call draw_pixel
+  addq    $32, %rsp 
   popq %r9
   popq %r8
   popq %rdx
