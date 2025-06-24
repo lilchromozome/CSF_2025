@@ -685,20 +685,18 @@ draw_circle:
  */
     .globl draw_tile
   draw_tile:
-    pushq %rbp
-    pushq %rbx
-    pushq %r12
-    pushq %r13
-    pushq %r14
-    pushq %r15
-    pushq %r8
-    pushq %r9
+    pushq %rbp              # callee saved for stack
+    pushq %rbx              # callee saved for tile rect
+    pushq %r12              # tile map data array
+    pushq %r13              # callee saved tilemap data
+    pushq %r14              # callee saved count row
+    pushq %r15              # callee saved count col
     movq %rsp, %rbp
-    subq $32, %rsp                 
+    subq $80, %rsp
+    movq  %rdi, (%rsp)      # save destination img to stack
+    movq  %rcx, 8(%rsp)     # save tile map to stack   
 
     # Initialize variables
-    movq %rdi, %r12               # dest image
-    movq %rcx, %r13               # tilemap image
     movq %r8, %rbx                # tile rect
     movl $0, %r14d                # j = row 
     movl $0, %r15d                # i = col
@@ -713,79 +711,77 @@ draw_circle:
     movl RECT_HEIGHT_OFFSET(%rbx), %edx
     movl %edx, -24(%rbp)          # tile->height
     
-    # Check bounds
-    movq %r13, %rdi              # tilemap image
+    # Check bounds of tilemap
+    movq 8(%rsp), %rdi              # tilemap image
     call in_bounds
-    cmpl $0, %eax
+    cmpl $0, %eax                 /* if dest x,y not in bounds, return */
     je .Ltile_end_row_loop      
 
     movl RECT_X_OFFSET(%rbx), %esi
-    addl RECT_WIDTH_OFFSET(%rbx), %esi
-    decl %esi                    # x + width - 1
+    addl RECT_WIDTH_OFFSET(%rbx), %esi  
+    decl %esi                    # esi = x + width - 1
 
     movl RECT_Y_OFFSET(%rbx), %edx
     addl RECT_HEIGHT_OFFSET(%rbx), %edx
-    decl %edx                    # y + height - 1
+    decl %edx                    # edx = y + height - 1
 
-    movq %r13, %rdi              # tilemap image
+    movq 8(%rsp), %rdi              # tilemap image
     call in_bounds
-    cmpl $0, %eax
+    cmpl $0, %eax                 /* if target x,y not in bounds, return */
     je .Ltile_end_row_loop       
   .Ltile_row_loop:
     cmpl -24(%rbp), %r14d         # if (j >= height)
     jge .Ltile_end_row_loop
-    movl $0, %r15d                # i = 0
+    movl $0, %r15d                # reset col, i = 0
 
   .Ltile_col_loop:
     cmpl -32(%rbp), %r15d         # if (i >= width)
     jge .Ltile_end_col_loop
 
     # Check bounds for destination pixel
-    movl %r11d, %esi
-    addl %r15d, %esi
-    movl %r10d, %edx
-    addl %r14d, %edx
-    movq %r12, %rdi
-    call in_bounds
+    movl %r11d, %esi      # esi = dest x
+    addl %r15d, %esi      # esi = x + col
+    movl %r10d, %edx      # edx = dest y
+    addl %r14d, %edx      # edx = y + row
+    movq (%rsp), %rdi       # move dest img to 1st arg
+    call in_bounds        # if not in bounds, continue
     cmpl $0, %eax
     je .Lcol_advance
 
     # compute index  in tilemap image
-    movl %r15d, %esi
-    addl RECT_X_OFFSET(%rbx), %esi
-    movl %r14d, %edx
-    addl RECT_Y_OFFSET(%rbx), %edx
-    movq %r13, %rdi
-    call compute_index
-    cmpl $-1, %eax
+    movl %r15d, %esi                # esi = col
+    addl RECT_X_OFFSET(%rbx), %esi  # esi = tile->x + col
+    movl %r14d, %edx                # edx = row
+    addl RECT_Y_OFFSET(%rbx), %edx  # edc = tile->y + row
+    movq 8(%rsp), %rdi                 # restore dest img for 1st arg
+    call compute_index 
+    cmpl $-1, %eax                  # if invalid index, continue
     je .Lcol_advance
-    movq IMAGE_DATA_OFFSET(%r13), %r9
-    movl (%r9, %rax, 4), %r8d     
+    movq IMAGE_DATA_OFFSET(%rdi), %r12 # r12 = tilemap data array
+    movl (%r12, %rax, 4), %r13d     # r13d = tilemap->data[index_tile]
 
     # compute index in dest image
-    movl %r11d, %esi
-    addl %r15d, %esi
-    movl %r10d, %edx
-    addl %r14d, %edx
-    movq %r12, %rdi
+    movl %r11d, %esi            # esi = col
+    addl %r15d, %esi            # esi = col + dest x
+    movl %r10d, %edx            # edx = row
+    addl %r14d, %edx            # edx = row + dest y
+    movq (%rsp), %rdi           # restor dest img for 1st arf
     call compute_index
     cmpl $-1, %eax
-    je .Lcol_advance
-    movq IMAGE_DATA_OFFSET(%r12), %r9
-    movl %r8d, (%r9, %rax, 4)     # set pixel
+    je .Lcol_advance            # if invalid index, continue
+    movq IMAGE_DATA_OFFSET(%rdi), %r12  
+    movl %r13d, (%r12, %rax, 4)     # set pixel to tilemap data
 
   .Lcol_advance:
-    incl %r15d
+    incl %r15d                # col++
     jmp .Ltile_col_loop
 
   .Ltile_end_col_loop:
-    incl %r14d
+    incl %r14d                # row++
     jmp .Ltile_row_loop
 
   .Ltile_end_row_loop:
-    addq $32, %rsp
-    popq %r9
-    popq %r8
+    addq $80, %rsp        # restor pointer and stack vars
     popq %r15
     popq %r14
     popq %r13
