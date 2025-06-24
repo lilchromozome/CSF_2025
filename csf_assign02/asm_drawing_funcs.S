@@ -40,27 +40,37 @@
   .globl in_bounds
 in_bounds:
     # move  img.width in eax, img.height in ecx
-    movl    (%rdi), %eax       # eax = img.width
-    movl    4(%rdi), %ecx      # ecx = img-.eight
+
+    pushq   %r12
+    pushq   %r13
+    subq    $16, %rsp
+    movl    (%rdi), %r12d       # r12 = img.width
+    movl    4(%rdi), %r13d      # r13 = img.height
 
     /* if (y < 0) return false; */
     cmpl    $0, %edx          # if (y < 0)
     jl      .Lfalse           # return false
     /* if (y >= img_height) return false; */
-    cmpl    %ecx, %edx          # if (y >= img_height)
+    cmpl    %r13d, %edx          # if (y >= img_height)
     jge     .Lfalse             # return false
     /* if (x < 0) return false; */
     cmpl    $0, %esi            # if (x < 0)
     jl      .Lfalse             # return false
     /* if (x >= img_width) return false; */
-    cmpl    %eax, %esi          # if (x >= img_width)
+    cmpl    %r12d, %esi          # if (x >= img_width)
     jge     .Lfalse             # return false
 
+    addq  $16, %rsp
+    popq  %r13
+    popq  %r12
     # all vals in bounds -> return true
     movl    $1, %eax        # move 1 to return register
     ret
 .Lfalse:
 	# not in bounds -> retun false;
+    addq  $16, %rsp
+    popq  %r13
+    popq  %r12
     xorl 	%eax, %eax          # clear return register
     ret
 
@@ -584,23 +594,28 @@ draw_circle:
 # y loop: for (int32_t i = y_min; i <= y_max; ++i)
   movl %r14d, %r11d         # r14d = i = y_min
 .Ly_loop:
-  cmpl    %r11d, %r15d      # i <= y_max
+  cmpl    %r15d, %r11d      /* if i > y_max, skip */
   jg      .Ldone_circle
   # x loop: for (int32_t j = x_min; j <= x_max; ++j) 
   movl    %r12d, %r10d        # r10 = j
 
 .Lx_loop:
-  cmpl    %r10d, %r13d        # j <= x_max
+  cmpl    %r13d, %r10d        /* if j > x_max, skip */
   jg      .Lnext_y
 
   /* if (!in_bounds(img, j, i)) continue; */
+  subq    $16, %rsp          # make space to store esi = x, edx = y
+  movl    %esi, (%rsp)
+  movl    %edx, 4(%rsp)
   movl    %r10d, %esi        # esi = j
   movl    %r11d, %edx       # edx = i
   call    in_bounds
+  movl    (%rsp), %esi
+  movl    4(%rsp), %edx
+  addq    $16, %rsp
   cmpl    $0, %eax
   je      .Lnext_x
-
-  subq    $16, %rsp         # make stack pointer space for diff_x, diff_y
+  
 
   #  diff_x = x - j
   movl    %esi, %ebx       # ebx = x
@@ -609,7 +624,7 @@ draw_circle:
 
   #  diff_y = y - i
   movl    %edx, %ebp       # ebp = y
-  subl    %edx, %ebp       # ebp = diff_y = y - i
+  subl    %r11d, %ebp       # ebp = diff_y = y - i
   imull   %ebp, %ebp        # ebp = diff_y^2
 
   # total squared distance
@@ -624,10 +639,18 @@ draw_circle:
   jg      .Lnext_x
 
   # draw_pixel(img, j, i, color)
+  subq    $32, %rsp          # make space to store esi = x, edx = y, ecx = r
+  movl    %esi, (%rsp)
+  movl    %edx, 4(%rsp)
+  movl    %ecx, 8(%rsp)
   movl    %r10d, %esi        # esi = j
   movl    %r11d, %edx       # edx = i
   movl    %r8d, %ecx       # ecx = color
-  call    draw_pixel 
+  call    draw_pixel
+  movl    (%rsp), %esi
+  movl    4(%rsp), %edx
+  movl    8(%rsp), %ecx
+  addq    $32, %rsp
 
 .Lnext_x:
     incl    %r10d              # ++j

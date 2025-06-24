@@ -72,6 +72,7 @@ void check_picture(struct Image *img, Picture *p) {
     char c = p->pic[i];
     uint32_t expected_color = lookup_color(c, p->colors);
     uint32_t actual_color = img->data[i];
+    printf("%d vs real %d at %i \n", actual_color, expected_color, i);
     ASSERT(actual_color == expected_color);
   }
 }
