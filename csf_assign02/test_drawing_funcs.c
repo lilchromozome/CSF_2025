@@ -589,7 +589,29 @@ void test_draw_sprite(TestObjs *objs) {
   draw_rect(&objs->large, &r, 0x800080FF);
 
   struct Rect sue = { .x = 128, .y = 136, .width = 16, .height = 15 };
+  
+  // debug
+  printf("Sprite alpha values at (x = %d, y = %d, w = %d, h = %d):\n", sue.x, sue.y, sue.width, sue.height);
+  for (int j = 0; j < sue.height; j++) {
+    for (int i = 0; i < sue.width; i++) {
+      int sx = sue.x + i;
+      int sy = sue.y + j;
+      int idx = compute_index(&objs->spritemap, sx, sy);
+      if (idx == -1) {
+        printf(" XX ");
+        continue;
+      }
+      uint32_t color = objs->spritemap.data[idx];
+      uint8_t alpha = get_a(color);
+      printf("%3d ", alpha);
+    }
+    printf("\n");
+  }
+  printf("===== end sprite alpha debug =====\n");
+
+
   draw_sprite(&objs->large, 4, 2, &objs->spritemap, &sue);
+
 
   Picture pic = {
     {

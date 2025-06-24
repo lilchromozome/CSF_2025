@@ -832,149 +832,113 @@ draw_circle:
  *   %rcx - pointer to Image (the spritemap)
  *   %r8  - pointer to Rect (the sprite)
  */
-	.globl draw_sprite
+.globl draw_sprite
 draw_sprite:
-	/* TODO: implement */
+  pushq %rbp
+  movq %rsp, %rbp
   pushq %rbx
   pushq %r12
   pushq %r13
   pushq %r14
   pushq %r15
-  pushq %rbp
 
-  movl 0(%r8), %r9d
-  movl 4(%r8), %r10d
-  movl 8(%r8), %r11d
-  movl 12(%r8), %ebp
+  subq $32, %rsp             # -32: width, -24: height
 
-  cmpl $0, %r9d
-  jl .Ldone_sprite
-  cmpl $0, %r10d
-  jl .Ldone_sprite
+  movq %rdi, %r12            # r12 = dest image
+  movl %esi, %r13d           # r13d = x
+  movl %edx, %r14d           # r14d = y
+  movq %rcx, %r15            # r15 = spritemap
+  movq %r8, %rbx             # rbx = sprite rect
 
-  movl 0(%rcx), %eax        # spritemap->width
-  movl %r9d, %ebx
-  addl %r11d, %ebx
-  cmpl %eax, %ebx
-  jg .Ldone_sprite
+  movl RECT_WIDTH_OFFSET(%rbx), %eax
+  movl %eax, -32(%rbp)
+  movl RECT_HEIGHT_OFFSET(%rbx), %eax
+  movl %eax, -24(%rbp)
 
-  movl 4(%rcx), %eax        # spritemap->height
-  movl %r10d, %ebx
-  addl %ebp, %ebx
-  cmpl %eax, %ebx
-  jg .Ldone_sprite
+  xorl %r10d, %r10d          # j = 0
+.Lrow_loop:
+  cmpl -24(%rbp), %r10d
+  jge .Ldone
 
-  # r12 = start_col
-  # r13 = start_row
-  # r14 = width
-  # r15 = height
-  xorl %r12d, %r12d         
-  xorl %r13d, %r13d
-  movl %r11d, %r14d
-  movl %ebp, %r15d
+  xorl %r11d, %r11d          # i = 0
+.Lcol_loop:
+  cmpl -32(%rbp), %r11d
+  jge .Lnext_row
 
-  cmpl $0, %edx
-  jge .Lclip_bounds_sprite
-  movl %edx, %eax
-  negl %eax
-  movl %eax, %r13d          # start_row = -y
-  subl %eax, %r15d          # height -= -y
-  xorl %edx, %edx           # y = 0
+  # sx = sprite.x + i
+  movl RECT_X_OFFSET(%rbx), %eax
+  addl %r11d, %eax
+  movl %eax, %esi
 
-  .Lclip_bounds_sprite:
-    movl 0(%rdi), %eax
-    subl %esi, %eax
-    cmpl %eax, %r14d
-    cmovg %eax, %r14d
+  # sy = sprite.y + j
+  movl RECT_Y_OFFSET(%rbx), %eax
+  addl %r10d, %eax
+  movl %eax, %edx
 
-    movl 4(%rdi), %eax
-    subl %edx, %eax
-    cmpl %eax, %r15d
-    cmovg %eax, %r15d
+  movq %r15, %rdi
+  call compute_index
+  cmpl $-1, %eax
+  je .Lcol_continue
 
-    movl 0(%rcx), %eax
-    subl %r9d, %eax
-    subl %r12d, %eax
-    cmpl %eax, %r14d
-    cmovg %eax, %r14d
+  movl %eax, %r9d                     # index
+  movq IMAGE_DATA_OFFSET(%r15), %r8
+  movl (%r8,%r9,4), %r8d              # sprite color
 
-    movl 4(%rcx), %eax
-    subl %r10d, %eax
-    subl %r13d, %eax
-    cmpl %eax, %r15d
-    cmovg %eax, %r15d
+  # get alpha
+  movl %r8d, %r9d              # backup sprite color
+movl %r9d, %edi
+call get_a
+testb %al, %al
+je .Lcol_continue
 
-    cmpl $0, %r14d
-    jle .Ldone_sprite
-    cmpl $0, %r15d
-    jle .Ldone_sprite
+movl %r9d, %r8d              # restore color to %r8d
 
-    movq 16(%rdi), %rsi       # img->data
-    movq 16(%rcx), %rdi       # spritemap->data
-    xorl %ebx, %ebx
 
-  .Lcol_loop_sprite:
-    cmpl %r14d, %ebx
-    jge .Ldone_sprite
-    xorl %eax, %eax 
-  
-  .Lrow_loop_sprite:
-    cmpl %r15d, %eax
-    jge .Lnext_col_sprite
+  # compute (x+i, y+j)
+  movl %r13d, %eax
+  addl %r11d, %eax
+  movl %eax, %esi
 
-    # img_index = compute_index(img, x + col, y + row)
-    movl %esi, %r8d          # r12 = x
-    addl %ebx, %r8d          # r12 += col
-    movl %edx, %r9d          # r13 = y
-    addl %eax, %r9d          # r13 += row
-    call compute_index
-    cmpl $-1, %eax
-    je .Lskip_sprite_pixel
-    movl %eax, %r10d          # img index
+  movl %r14d, %eax
+  addl %r10d, %eax
+  movl %eax, %edx
 
-    # spritemap_index = compute_index(spritemap, tile_x + start_col + col, tile_y + start_row + row)
-    movl %r9d, %r8d
-    movl %r10d, %r9d
-    movl %r9d, %r11d
-    addl %r13d, %r11d
-    addl %eax, %r11d
-    movl %r10d, %r12d
-    addl %r12d, %r12d
-    addl %ebx, %r12d
-    movq %rdi, %rdi
-    movl %r12d, %r8d
-    movl %r11d, %r9d
-    call compute_index
-    movl %eax, %r11d
-    cmpl $-1, %eax
-    je .Lskip_sprite_pixel
+  # in_bounds(dest, x+i, y+j)
+  movq %r12, %rdi
+  call in_bounds
+  testl %eax, %eax
+  je .Lcol_continue
 
-    # blend
-    movl (%rdi,%r11,4), %r12d
-    movl (%rsi,%r10,4), %r13d
-    movl %r12d, %edi
-    movl %r13d, %esi
-    call blend_colors
+  # draw_pixel(dest, x+i, y+j, color)
+  movq %r12, %rdi
+  movl %r13d, %eax
+  addl %r11d, %eax
+  movl %eax, %esi
+  movl %r14d, %eax
+  addl %r10d, %eax
+  movl %eax, %edx
+  movl %r8d, %ecx
+  call draw_pixel
 
-    movl %eax, (%rsi,%r10,4)
+.Lcol_continue:
+  incl %r11d
+  jmp .Lcol_loop
 
-  .Lskip_sprite_pixel:
-    incl %eax
-    jmp .Lrow_loop_sprite
+.Lnext_row:
+  incl %r10d
+  jmp .Lrow_loop
 
-  .Lnext_col_sprite:
-    incl %ebx
-    jmp .Lcol_loop_sprite
+.Ldone:
+  addq $32, %rsp
+  popq %r15
+  popq %r14
+  popq %r13
+  popq %r12
+  popq %rbx
+  popq %rbp
+  ret
 
-  .Ldone_sprite:
-    popq %rbp
-    popq %r15
-    popq %r14
-    popq %r13
-    popq %r12
-    popq %rbx
 
-	ret
 
 /*
 vim:ft=gas:
