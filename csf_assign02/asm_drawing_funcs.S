@@ -815,15 +815,15 @@ draw_sprite:
     pushq %r14
     pushq %r15
 
-    subq $80, %rsp                 # reserve space: [rbp-32]=width, [rbp-24]=height
+    subq $32, %rsp                 # reserve space: [rbp-32]=width, [rbp-24]=height
 
-    movq %rdi, %r12                # r12 = dest image
-    movl %esi, %r13d               # r13d = dest x
-    movl %edx, %r14d               # r14d = dest y
-    movq %rcx, %r15                # r15 = spritemap
-    movq %r8, %rbx                 # rbx = sprite rect
+    movq %rdi, %r12                # dest image
+    movl %esi, %r13d               # dest x
+    movl %edx, %r14d               # dest y
+    movq %rcx, %r15                # spritemap
+    movq %r8, %rbx                 # sprite rect
 
-    # save width/height on stack
+    # save width and height
     movl RECT_WIDTH_OFFSET(%rbx), %eax
     movl %eax, -32(%rbp)                  # store sprite width on stack
     movl RECT_HEIGHT_OFFSET(%rbx), %eax
@@ -839,22 +839,23 @@ draw_sprite:
     cmpl -24(%rbp), %r11d         # for  row < sprite->height
     jge .Lnext_row
 
-    #### 1. compute src_x = sprite.x + j, src_y = sprite.y + i
+    #### 1. compute src_x = sprite.x + i, src_y = sprite.y + j
     movl RECT_X_OFFSET(%rbx), %eax
-    addl %r10d, %eax               # eax = sprite.x + j
+    addl %r11d, %eax
     movl %eax, %esi                # src_x -> %esi
 
+    # src_y = sprite->y + j
     movl RECT_Y_OFFSET(%rbx), %eax
-    addl %r11d, %eax               # eax = sprite.y + i
+    addl %r10d, %eax
     movl %eax, %edx                # src_y -> %edx
 
     #### 2. in_bounds(spritemap, src_x, src_y)
-    movq %r15, %rdi         # return spritemap to check in bounds
+    movq %r15, %rdi
     call in_bounds
     testl %eax, %eax        #
     je .Lcol_continue
 
-    #### 3. compute_index(spritemap, src_x, src_y)
+    # compute_index(spritemap, src_x, src_y)
     movl RECT_X_OFFSET(%rbx), %eax
     addl %r11d, %eax
     movl %eax, %esi
@@ -866,42 +867,36 @@ draw_sprite:
     cmpl $-1, %eax
     je .Lcol_continue
 
-    movl %eax, %r9d                # r9d = index
-
-    #### 4. read color = spritemap->data[index]
+    movl %eax, %r9d                # index
     movq IMAGE_DATA_OFFSET(%r15), %r8
-    movl (%r8,%r9,4), %ecx         # color -> %ecx
+    movl (%r8, %r9, 4), %eax       # color -> eax
+    movl %eax, %ecx                # ✅ put color into ecx for draw_pixel
 
-    #### 5. get alpha(color)
+    # check alpha
     movl %ecx, %edi
     call get_a
     testb %al, %al
     je .Lcol_continue
 
-    #### 6. compute dest_x = x + i, dest_y = y + j
+    # dest_x = x + i
     movl %r13d, %eax
     addl %r11d, %eax
     movl %eax, %esi
 
+    # dest_y = y + j
     movl %r14d, %eax
     addl %r10d, %eax
     movl %eax, %edx
 
-    #### 7. in_bounds(dest, x+i, y+j)
+    # bounds check for dest
     movq %r12, %rdi
     call in_bounds
     testl %eax, %eax
     je .Lcol_continue
 
-    #### 8. draw_pixel(dest, x+i, y+j, color)
-    movq %r12, %rdi                # dest image
-    movl %r13d, %eax
-    addl %r11d, %eax
-    movl %eax, %esi
-    movl %r14d, %eax
-    addl %r10d, %eax
-    movl %eax, %edx
-    movl %ecx, %ecx                # color already in ecx
+    # final call
+    movq %r12, %rdi
+    # %esi = x, %edx = y, %ecx = color
     call draw_pixel
 
 .Lcol_continue:
@@ -921,6 +916,8 @@ draw_sprite:
     popq %rbx
     popq %rbp
     ret
+
+
 
 
 /*
