@@ -807,6 +807,7 @@ draw_circle:
  */
 .globl draw_sprite
 draw_sprite:
+    # save registers
     pushq %rbp
     movq %rsp, %rbp
     pushq %rbx
@@ -815,96 +816,97 @@ draw_sprite:
     pushq %r14
     pushq %r15
 
-    subq $32, %rsp                 # reserve space: [rbp-32]=width, [rbp-24]=height
+    subq $80, %rsp                 # reserve space: [rbp-32]=width, [rbp-24]=height
 
-    movq %rdi, %r12                # dest image
-    movl %esi, %r13d               # dest x
-    movl %edx, %r14d               # dest y
-    movq %rcx, %r15                # spritemap
-    movq %r8, %rbx                 # sprite rect
+    # Save parameters
+    movq %rdi, %r12                # r12 = dest image pointer
+    movl %esi, %r13d               # r13d = dest x
+    movl %edx, %r14d               # r14d = dest y
+    movq %rcx, %r15                # r15 = spritemap image pointer
+    movq %r8, %rbx                 # rbx = pointer to sprite rect
 
-    # save width and height
+    # save width/height on stack
     movl RECT_WIDTH_OFFSET(%rbx), %eax
-    movl %eax, -32(%rbp)                  # store sprite width on stack
+    movl %eax, -32(%rbp)           # width
     movl RECT_HEIGHT_OFFSET(%rbx), %eax
-    movl %eax, -24(%rbp)                  # store sprite height on stack
+    movl %eax, -24(%rbp)           # height
 
-    xorl %r10d, %r10d              # col = 0 = j
+    xorl %r10d, %r10d              # r10d = row (j) = 0
 .Lrow_loop:
-    cmpl -32(%rbp), %r10d         # for  col < sprite->width
+    cmpl -24(%rbp), %r10d          # while row(j) < height
     jge .Ldone
 
-    xorl %r11d, %r11d              # row = 0 = i
+    xorl %r11d, %r11d              # r11d = col (i) = 0
 .Lcol_loop:
-    cmpl -24(%rbp), %r11d         # for  row < sprite->height
+    cmpl -32(%rbp), %r11d          # while col(i) < width
     jge .Lnext_row
 
-    #### 1. compute src_x = sprite.x + i, src_y = sprite.y + j
+    # sourve coorfinates in spritemap
+    # src_x = sprite.x + col, src_y = sprite.y + row
     movl RECT_X_OFFSET(%rbx), %eax
-    addl %r11d, %eax
-    movl %eax, %esi                # src_x -> %esi
+    addl %r11d, %eax               # src_x = rect.x + i
+    movl %eax, %esi                # %esi = src_x
 
-    # src_y = sprite->y + j
     movl RECT_Y_OFFSET(%rbx), %eax
-    addl %r10d, %eax
-    movl %eax, %edx                # src_y -> %edx
+    addl %r10d, %eax               # src_y = rect.y + j
+    movl %eax, %edx                # %edx = src_y
 
-    #### 2. in_bounds(spritemap, src_x, src_y)
+    # in_bounds(spritemap, src_x, src_y)
     movq %r15, %rdi
     call in_bounds
-    testl %eax, %eax        #
+    testl %eax, %eax
     je .Lcol_continue
 
     # compute_index(spritemap, src_x, src_y)
     movl RECT_X_OFFSET(%rbx), %eax
     addl %r11d, %eax
-    movl %eax, %esi
+    movl %eax, %esi                 # %esi = src_x
     movl RECT_Y_OFFSET(%rbx), %eax
     addl %r10d, %eax
-    movl %eax, %edx
-    movq %r15, %rdi
+    movl %eax, %edx                 # edi = src_y
+    movq %r15, %rdi                 #rdi = spritemap
     call compute_index
     cmpl $-1, %eax
-    je .Lcol_continue
+    je .Lcol_continue               # skip of index invalid
 
-    movl %eax, %r9d                # index
-    movq IMAGE_DATA_OFFSET(%r15), %r8
-    movl (%r8, %r9, 4), %eax       # color -> eax
-    movl %eax, %ecx                # ✅ put color into ecx for draw_pixel
+    movl %eax, %r9d                 # r9d = index image->data
 
-    # check alpha
-    movl %ecx, %edi
+    # read color = spritemap->data[index]
+    movq IMAGE_DATA_OFFSET(%r15), %r8  # r8 = spritemap->data
+    movl (%r8, %r9, 4), %ecx          # %ecx = color  
+
+    # get alpha(color), if alpha == 0, skip
+    movl %ecx, %edi                 # %edi = color of get_a
     call get_a
     testb %al, %al
-    je .Lcol_continue
+    je .Lcol_continue               # skip if transparent, a=0
 
-    # dest_x = x + i
+    # compute dest_x = x + col, dest_y = y + row
     movl %r13d, %eax
     addl %r11d, %eax
-    movl %eax, %esi
+    movl %eax, %esi                # esi = dest_x
 
-    # dest_y = y + j
     movl %r14d, %eax
     addl %r10d, %eax
-    movl %eax, %edx
+    movl %eax, %edx                # edx = dest_y
 
-    # bounds check for dest
-    movq %r12, %rdi
+    # in_bounds(dest, x+i, y+j)
+    movq %r12, %rdi                 #rdi = dest image pointer
     call in_bounds
     testl %eax, %eax
     je .Lcol_continue
 
-    # final call
+    # draw_pixel(dest, x+i, y+j, color)
     movq %r12, %rdi
-    # %esi = x, %edx = y, %ecx = color
+    # %esi = x, %edx = y, %ecx = color 
     call draw_pixel
 
 .Lcol_continue:
-    incl %r11d
+    incl %r11d              #i++
     jmp .Lcol_loop
 
 .Lnext_row:
-    incl %r10d
+    incl %r10d                #j++
     jmp .Lrow_loop
 
 .Ldone:
@@ -916,9 +918,6 @@ draw_sprite:
     popq %rbx
     popq %rbp
     ret
-
-
-
 
 /*
 vim:ft=gas:
