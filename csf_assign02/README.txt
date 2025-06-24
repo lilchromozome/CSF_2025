@@ -26,6 +26,8 @@ Functions and tests written in asm
 William:
 in_bounds
 compute_index
+draw_circle
+draw_rect
 get_r
 get_g
 get_b
@@ -33,6 +35,8 @@ get_a
 
 
 Sichen:
+draw_sprite
+draw_tile
 blend_components
 blend_colors
 set_pixel
