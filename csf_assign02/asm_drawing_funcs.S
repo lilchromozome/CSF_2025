@@ -364,7 +364,7 @@ set_pixel:
   movq 8(%rdi), %rcx        # 2 uint32 values (width, length in struct) store position of *data in %rcx
   # img->data[index] = color;
   movl    %esi, %eax        # eax = index
-  movslq %eax, %rax         # sign extend eax
+  movslq  %eax, %rax         # sign extend eax
   movl    %edx, (%rcx,%rax,4)   # data[index] = color     4 bytes * index + data pointer
   ret
 
@@ -540,7 +540,8 @@ draw_circle:
   pushq   %r10           # temp var: j
   pushq   %rbx           # callee saved diff_x
   pushq   %rbp           # callee save diff_y
-  subq    $64, %rsp
+  subq    $80, %rsp
+  movl    %r8d, (%rsp)   # save color to the stack
 
 
   /* if (r < 0) return */
@@ -606,7 +607,7 @@ draw_circle:
 .Lskip_xmax:
 
 # y loop: for (int32_t i = y_min; i <= y_max; ++i)
-  movl %r14d, %r11d         # r14d = i = y_min
+  movl    %r14d, %r11d         # r14d = i = y_min
 .Ly_loop:
   cmpl    %r15d, %r11d      /* if i > y_max, skip */
   jg      .Ldone_circle
@@ -661,7 +662,7 @@ draw_circle:
   movl    %r10d, 16(%rsp)
   movl    %r10d, %esi        # esi = j
   movl    %r11d, %edx       # edx = i
-  movl    %r8d, %ecx       # ecx = color
+  movl    32(%rsp), %ecx       # ecx = color
   call    draw_pixel
   movl    (%rsp), %esi
   movl    4(%rsp), %edx
@@ -680,7 +681,7 @@ draw_circle:
 
 .Ldone_circle:
     # Restore stack
-    addq    $64, %rsp
+    addq    $80, %rsp
     popq    %rbp
     popq    %rbx
     popq    %r10
