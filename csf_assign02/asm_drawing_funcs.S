@@ -357,17 +357,33 @@ blend_colors:
 /* void set_pixel(struct Image *img, uint32_t index, uint32_t color) */
 .global set_pixel
 set_pixel:
-  cmp   $0, %esi
-  jl    .Lreturn_set_pixel
+  pushq %r10
+  pushq %r11
+  subq  $16, %rsp
+  cmp   $0, %esi            # if index < 0
+  jl    .Lreturn_set_pixel 
 
+  movl  0(%rdi), %r10d        # width
+  movl  4(%rdi), %r11d        # height
+  imul  %r10d, %r11d           # r9d = width * height
+  cmpl  %r11d, %esi           # if index >= width * height
+  jge   .Lreturn_set_pixel
+  
   movq 8(%rdi), %rcx        # 2 uint32 values (width, length in struct) store position of *data in %rcx
   # img->data[index] = color;
   movl    %esi, %eax        # eax = index
   movslq %eax, %rax         # sign extend eax
   movl    %edx, (%rcx,%rax,4)   # data[index] = color     4 bytes * index + data pointer
+
+  addq  $16, %rsp
+  popq  %r10
+  popq  %r11
   ret
 
 .Lreturn_set_pixel:
+  addq  $16, %rsp
+  popq  %r10
+  popq  %r11
   ret
 
 
