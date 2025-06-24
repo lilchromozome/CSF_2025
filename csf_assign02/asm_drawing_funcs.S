@@ -635,7 +635,7 @@ draw_circle:
   imull   %ebp, %ebp       # ebp = r * r
 
   # compare
-  cmpl    %ebx, %ebp        # if (diff^2 > r^2)
+  cmpl    %ebp, %ebx        # if (diff^2 > r^2)
   jg      .Lnext_x
 
   # draw_pixel(img, j, i, color)
@@ -643,6 +643,8 @@ draw_circle:
   movl    %esi, (%rsp)
   movl    %edx, 4(%rsp)
   movl    %ecx, 8(%rsp)
+  movl    %r11d, 12(%rsp)
+  movl    %r10d, 16(%rsp)
   movl    %r10d, %esi        # esi = j
   movl    %r11d, %edx       # edx = i
   movl    %r8d, %ecx       # ecx = color
@@ -650,6 +652,8 @@ draw_circle:
   movl    (%rsp), %esi
   movl    4(%rsp), %edx
   movl    8(%rsp), %ecx
+  movl    12(%rsp), %r11d
+  movl    16(%rsp), %r10d
   addq    $32, %rsp
 
 .Lnext_x:
