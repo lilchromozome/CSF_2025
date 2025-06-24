@@ -428,6 +428,8 @@ draw_pixel:
   movq 8(%rdi), %r11  # r11 = img->data pointer
   movl -40(%rbp), %r10d  # r10 = index
   movslq %r10d, %r10  # sign extend index to 64-bit
+  cmpq $-1, %r10
+  je .Lreturn_empty
   leaq (%r11, %r10, 4), %r11  # r11 = img->data + index * 4
   movl (%r11), %esi
   movl %esi, -48(%rbp)  # store img->data[index] in stack
