@@ -103,9 +103,10 @@ compute_index:
 
   /* index= y*width + x */
   # int32_t img_width = img -> width;
+  movl 	(%rdi), %ecx
 
   # int32_t index = y * img_width + x;
-  imull   (%rdi), %edx        # edx (index) = y * width 
+  imull   %ecx, %edx        # edx (index) = y * width 
   addl    %esi, %edx        # edx += x
 
   # return index#
@@ -171,33 +172,35 @@ get_a:
 
 .global blend_components
 blend_components:
-  pushq   %r12           # callee saved for calc and 255
-  pushq   %r13           # callee saved for bg
-  pushq   %r14          # callee saved for a
+  pushq   %r8           # callee saved for fg
+  pushq   %r9           # callee saved for bg
+  pushq   %r10          # callee saved for a
+  pushq   %rcx
   pushq   %rdx
   subq    $48, %rsp    # align stack (5+1)*8 = 48 mod 16 = 0
-  movl    %edi, %r12d     # r12d = fg
-  movl    %esi, %r13d     # r13d = bg
-  movl    %edx, %r14d    # r14d = alpha
+  movl    %edi, %r8d     # r8d = fg
+  movl    %esi, %r9d     # r9d = bg
+  movl    %edx, %r10d    # r10d = alpha
 
   # uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255#
-  movl 		$255, %eax         # eax = 255
-  subl 		%edx, %eax         # eax = 255 - alpha
-  imull 	%esi, %eax         # eax = bg * (255 - alpha)
+  movl 		$255, %eax         # ecx = 255
+  subl 		%r10d, %eax         # ecx = 255 - alpha
+  imull 	%r9d, %eax         # ecx = bg * (255 - alpha)
 
-  imull 	%edx, %r12d         # edi = alpha * fg
-  addl 		%r12d, %eax         # eax = alpha * fg + bg * (255 - alpha)
+  imull 	%r10d, %r8d         # edi = alpha * fg
+  addl 		%r8d, %eax         # ecx = alpha * fg + bg * (255 - alpha)
 
   xorl 	%edx, %edx           # clear edx for division
-  movl 	$255, %r12d         # r10d = denominator
-  divl 	%r12d               # eax = edx:eax / r10d
+  movl 	$255, %ecx         # ecx = denominator
+  divl 	%ecx               # eax = edx:eax / ecx
 
   # return (uint8_t) result#
   addq   $48, %rsp       # restor stack
   popq   %rdx         # clear all local registers
-  popq   %r14
-  popq   %r13
-  popq   %r12
+  popq   %rcx
+  popq   %r10
+  popq   %r9
+  popq   %r8
   ret
 
 /*
@@ -216,8 +219,7 @@ blend_colors:
   # save fg and bg on stack
   pushq 	%rbx              # rbx = callee saved fg
   pushq 	%r12              # r12 = callee saved bg.
-  pushq   %rcx
-  subq    $32, %rsp
+  subq    $16, %rsp
   movl 	%edi, %ebx        # ebx = fg
   movl 	%esi, %r12d 		# r12 = bg
 
@@ -299,8 +301,7 @@ blend_colors:
   shll 	$24, %r8d          # final_r << 24
   orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
-  addq  $32, %rsp
-  popq  %rcx
+  addq  $16, %rsp
   popq 	%r12
   popq 	%rbx              # delete callee saved registers
   ret
@@ -308,8 +309,7 @@ blend_colors:
 /* return(bg); */
 .Lreturn_bg:
     movl 	%r12d, %eax
-    addq  $32, %rsp
-    popq  %rcx
+    addq  $16, %rsp
     popq  %r12
     popq 	%rbx # delete callee saved registers
     ret
@@ -339,8 +339,7 @@ blend_colors:
     orl     $255, %ecx    # (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255
     movl    %ecx, %eax    
 
-    addq    $32, %rsp
-    popq    %rcx
+    addq  $16, %rsp
     popq    %r12
     popq    %rbx          # delete callee saved registers
     ret
@@ -364,7 +363,7 @@ set_pixel:
   movq 8(%rdi), %rcx        # 2 uint32 values (width, length in struct) store position of *data in %rcx
   # img->data[index] = color;
   movl    %esi, %eax        # eax = index
-  movslq  %eax, %rax         # sign extend eax
+  movslq %eax, %rax         # sign extend eax
   movl    %edx, (%rcx,%rax,4)   # data[index] = color     4 bytes * index + data pointer
   ret
 
@@ -530,58 +529,44 @@ draw_circle:
   pushq   %r10           # temp var: j
   pushq   %rbx           # callee saved diff_x
   pushq   %rbp           # callee save diff_y
-  subq    $80, %rsp
-  movl    %r8d, (%rsp)   # save color to the stack
+  subq    $64, %rsp
 
 
   /* if (r < 0) return */
   cmpl    $0, %ecx
   jl      .Ldone_circle
-  
-  movl    %esi, %r12d       # move x to r12 to store x_min
-  cmpl    %r12d, %ecx       # if r12 > ecx, if x > r
-  jle     .Lx_min_not_zero
-  movl    $0, %r12d         # x_min = 0
-  jmp     .Lset_x_max
-.Lx_min_not_zero:
-  subl    %ecx, %r12d       # r12d = x_min = x - r
-.Lset_x_max:
-  movl    %esi, %r13d       # move x to r12 to store x_max
-  addl    %ecx, %r13d       # x_max = x + r # r13d = x_max 
+ 
+  movl    %esi, %r12d       # x_min = x - r
+  subl    %ecx, %r12d       # r12d = x_min
+  movl    %esi, %r13d       # x_max = x + r
+  addl    %ecx, %r13d       # r13d = x_max 
 
-  movl    %edx, %r14d       # move y to r14 to store y_min 
-  cmpl    %r14d, %ecx       # if r14 > ecx, if y > r
-  jle     .Ly_min_not_zero
-  movl    $0, %r14d         # y_min = 0
-  jmp     .Lset_y_max
-.Ly_min_not_zero:
-  subl    %ecx, %r14d       # r14d = y_min  = y - r
-.Lset_y_max:
-  movl    %edx, %r15d       # move y to r15 to store y_max
-  addl    %ecx, %r15d       # r15d = y_max = y + r
-
+  movl    %edx, %r14d       # y_min = y - r
+  subl    %ecx, %r14d       # r14d = y_min
+  movl    %edx, %r15d       # y_max = y + r
+  addl    %ecx, %r15d       # r15d = y_max
 
   /* 
   if(y_min < 0) y_min = 0;
   if(x_min < 0) x_min = 0; 
   if(y_max >= img->height) y_max = img->height-1;
   if(x_max >= img->width) x_max = img->width-1;
-   */
+  */ 
 
   # restrict y_min = max(0, y_min)
-#  cmpl    $0, %r14d       /* if(y_min < 0) */
-#  jge     .Lcheck_xmin
-#  movl    $0, %r14d        # y_min = 0
+  cmpl    $0, %r14d       /* if(y_min < 0) */
+  jge     .Lcheck_xmin
+  movl    $0, %r14d        # y_min = 0
 
-# .Lcheck_xmin:
-#  # x_min = max(0, x_min)
-#  cmpl    $0, %r12d        /* if(x_min < 0) */
-#  jge     .Lcheck_ymax
-#  movl    $0, %r12d         # x_min = 0
+.Lcheck_xmin:
+  # x_min = max(0, x_min)
+  cmpl    $0, %r8d        /* if(x_min < 0) */
+  jge     .Lcheck_ymax
+  movl    $0, %r8d         # x_min = 0
 
 .Lcheck_ymax:
   # y_max = min(img->height, y_max)
-  movl    IMAGE_HEIGHT_OFFSET(%rdi), %r11d     # r11d = img->height
+  movl    4(%rdi), %r11d     # r11d = img->height
   cmpl    %r11d, %r15d        /* if(y_max >= img->height) */
   jl      .Lcheck_xmax
   movl    %r11d, %r15d      # y_max = img->height-1;
@@ -589,7 +574,7 @@ draw_circle:
 
 .Lcheck_xmax:
   # x_max = min(img->width, x_max)
-  movl    IMAGE_WIDTH_OFFSET(%rdi), %r11d      # eax = img->width
+  movl    (%rdi), %r11d      # eax = img->width
   cmpl    %r11d, %r13d      /* if(x_max >= img->width) */
   jl      .Lskip_xmax
   movl    %r11d, %r13d      # x_max = img->width-1
@@ -597,7 +582,7 @@ draw_circle:
 .Lskip_xmax:
 
 # y loop: for (int32_t i = y_min; i <= y_max; ++i)
-  movl    %r14d, %r11d         # r14d = i = y_min
+  movl %r14d, %r11d         # r14d = i = y_min
 .Ly_loop:
   cmpl    %r15d, %r11d      /* if i > y_max, skip */
   jg      .Ldone_circle
@@ -652,7 +637,7 @@ draw_circle:
   movl    %r10d, 16(%rsp)
   movl    %r10d, %esi        # esi = j
   movl    %r11d, %edx       # edx = i
-  movl    32(%rsp), %ecx       # ecx = color
+  movl    %r8d, %ecx       # ecx = color
   call    draw_pixel
   movl    (%rsp), %esi
   movl    4(%rsp), %edx
@@ -671,7 +656,7 @@ draw_circle:
 
 .Ldone_circle:
     # Restore stack
-    addq    $80, %rsp
+    addq    $64, %rsp
     popq    %rbp
     popq    %rbx
     popq    %r10
@@ -824,110 +809,120 @@ draw_circle:
  */
 .globl draw_sprite
 draw_sprite:
-  pushq %rbp
-  movq %rsp, %rbp
-  pushq %rbx
-  pushq %r12
-  pushq %r13
-  pushq %r14
-  pushq %r15
+    pushq %rbp
+    movq %rsp, %rbp
+    pushq %rbx
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
 
-  subq $32, %rsp             # -32: width, -24: height
+    subq $32, %rsp                 # reserve space: [rbp-32]=width, [rbp-24]=height
 
-  movq %rdi, %r12            # r12 = dest image
-  movl %esi, %r13d           # r13d = x
-  movl %edx, %r14d           # r14d = y
-  movq %rcx, %r15            # r15 = spritemap
-  movq %r8, %rbx             # rbx = sprite rect
+    movq %rdi, %r12                # r12 = dest image
+    movl %esi, %r13d               # r13d = dest x
+    movl %edx, %r14d               # r14d = dest y
+    movq %rcx, %r15                # r15 = spritemap
+    movq %r8, %rbx                 # rbx = sprite rect
 
-  movl RECT_WIDTH_OFFSET(%rbx), %eax
-  movl %eax, -32(%rbp)
-  movl RECT_HEIGHT_OFFSET(%rbx), %eax
-  movl %eax, -24(%rbp)
+    # save width/height on stack
+    movl RECT_WIDTH_OFFSET(%rbx), %eax
+    movl %eax, -32(%rbp)
+    movl RECT_HEIGHT_OFFSET(%rbx), %eax
+    movl %eax, -24(%rbp)
 
-  xorl %r10d, %r10d          # j = 0
+    xorl %r10d, %r10d              # j = 0
 .Lrow_loop:
-  cmpl -24(%rbp), %r10d
-  jge .Ldone
+    cmpl -24(%rbp), %r10d
+    jge .Ldone
 
-  xorl %r11d, %r11d          # i = 0
+    xorl %r11d, %r11d              # i = 0
 .Lcol_loop:
-  cmpl -32(%rbp), %r11d
-  jge .Lnext_row
+    cmpl -32(%rbp), %r11d
+    jge .Lnext_row
 
-  # sx = sprite.x + i
-  movl RECT_X_OFFSET(%rbx), %eax
-  addl %r11d, %eax
-  movl %eax, %esi
+    #### 1. compute src_x = sprite.x + i, src_y = sprite.y + j
+    movl RECT_X_OFFSET(%rbx), %eax
+    addl %r11d, %eax
+    movl %eax, %esi                # src_x -> %esi
 
-  # sy = sprite.y + j
-  movl RECT_Y_OFFSET(%rbx), %eax
-  addl %r10d, %eax
-  movl %eax, %edx
+    movl RECT_Y_OFFSET(%rbx), %eax
+    addl %r10d, %eax
+    movl %eax, %edx                # src_y -> %edx
 
-  movq %r15, %rdi
-  call compute_index
-  cmpl $-1, %eax
-  je .Lcol_continue
+    #### 2. in_bounds(spritemap, src_x, src_y)
+    movq %r15, %rdi
+    call in_bounds
+    testl %eax, %eax
+    je .Lcol_continue
 
-  movl %eax, %r9d                     # index
-  movq IMAGE_DATA_OFFSET(%r15), %r8
-  movl (%r8,%r9,4), %r8d              # sprite color
+    #### 3. compute_index(spritemap, src_x, src_y)
+    movl RECT_X_OFFSET(%rbx), %eax
+    addl %r11d, %eax
+    movl %eax, %esi
+    movl RECT_Y_OFFSET(%rbx), %eax
+    addl %r10d, %eax
+    movl %eax, %edx
+    movq %r15, %rdi
+    call compute_index
+    cmpl $-1, %eax
+    je .Lcol_continue
 
-  # get alpha
-  movl %r8d, %r9d              # backup sprite color
-movl %r9d, %edi
-call get_a
-testb %al, %al
-je .Lcol_continue
+    movl %eax, %r9d                # r9d = index
 
-movl %r9d, %r8d              # restore color to %r8d
+    #### 4. read color = spritemap->data[index]
+    movq IMAGE_DATA_OFFSET(%r15), %r8
+    movl (%r8,%r9,4), %ecx         # color -> %ecx
 
+    #### 5. get alpha(color)
+    movl %ecx, %edi
+    call get_a
+    testb %al, %al
+    je .Lcol_continue
 
-  # compute (x+i, y+j)
-  movl %r13d, %eax
-  addl %r11d, %eax
-  movl %eax, %esi
+    #### 6. compute dest_x = x + i, dest_y = y + j
+    movl %r13d, %eax
+    addl %r11d, %eax
+    movl %eax, %esi
 
-  movl %r14d, %eax
-  addl %r10d, %eax
-  movl %eax, %edx
+    movl %r14d, %eax
+    addl %r10d, %eax
+    movl %eax, %edx
 
-  # in_bounds(dest, x+i, y+j)
-  movq %r12, %rdi
-  call in_bounds
-  testl %eax, %eax
-  je .Lcol_continue
+    #### 7. in_bounds(dest, x+i, y+j)
+    movq %r12, %rdi
+    call in_bounds
+    testl %eax, %eax
+    je .Lcol_continue
 
-  # draw_pixel(dest, x+i, y+j, color)
-  movq %r12, %rdi
-  movl %r13d, %eax
-  addl %r11d, %eax
-  movl %eax, %esi
-  movl %r14d, %eax
-  addl %r10d, %eax
-  movl %eax, %edx
-  movl %r8d, %ecx
-  call draw_pixel
+    #### 8. draw_pixel(dest, x+i, y+j, color)
+    movq %r12, %rdi                # dest image
+    movl %r13d, %eax
+    addl %r11d, %eax
+    movl %eax, %esi
+    movl %r14d, %eax
+    addl %r10d, %eax
+    movl %eax, %edx
+    movl %ecx, %ecx                # color already in ecx
+    call draw_pixel
 
 .Lcol_continue:
-  incl %r11d
-  jmp .Lcol_loop
+    incl %r11d
+    jmp .Lcol_loop
 
 .Lnext_row:
-  incl %r10d
-  jmp .Lrow_loop
+    incl %r10d
+    jmp .Lrow_loop
 
 .Ldone:
-  addq $32, %rsp
-  popq %r15
-  popq %r14
-  popq %r13
-  popq %r12
-  popq %rbx
-  popq %rbp
-  ret
-
+    addq $32, %rsp
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    popq %rbx
+    popq %rbp
+    ret
 
 
 /*
