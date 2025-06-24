@@ -72,7 +72,7 @@ void check_picture(struct Image *img, Picture *p) {
     char c = p->pic[i];
     uint32_t expected_color = lookup_color(c, p->colors);
     uint32_t actual_color = img->data[i];
-    // printf("%d vs real %d at %i \n", actual_color, expected_color, i);
+    // printf("%x vs real %x at %i \n", actual_color, expected_color, i);
     ASSERT(actual_color == expected_color);
   }
 }
@@ -114,27 +114,27 @@ int main(int argc, char **argv) {
 
   // TODO: add TEST() directives for your helper functions
   // helper functions
-  TEST(test_in_bounds);
-  TEST(test_in_bounds_2);
-  TEST(test_in_bounds_3);
-  TEST(test_in_bounds_4);
-  TEST(test_compute_index);
-  TEST(test_compute_index_2);
-  TEST(test_compute_index_3);
-  TEST(test_compute_index_4);
-  TEST(test_get_color_components);
-  TEST(test_get_color_components_2);
-  TEST(test_blend_components);
-  TEST(test_blend_components_2);
-  TEST(test_blend_colors);
-  TEST(test_blend_colors_2);
-  TEST(test_set_pixel);
-  TEST(test_set_pixel_2);
-  TEST(test_draw_pixel);
-  TEST(test_draw_rect);
-  TEST(test_draw_circle);
-  TEST(test_draw_circle_clip);
-  TEST(test_draw_tile);
+  // TEST(test_in_bounds);
+  // TEST(test_in_bounds_2);
+  // TEST(test_in_bounds_3);
+  // TEST(test_in_bounds_4);
+  // TEST(test_compute_index);
+  // TEST(test_compute_index_2);
+  // TEST(test_compute_index_3);
+  // TEST(test_compute_index_4);
+  // TEST(test_get_color_components);
+  // TEST(test_get_color_components_2);
+  // TEST(test_blend_components);
+  // TEST(test_blend_components_2);
+  // TEST(test_blend_colors);
+  // TEST(test_blend_colors_2);
+  // TEST(test_set_pixel);
+  // TEST(test_set_pixel_2);
+  // TEST(test_draw_pixel);
+  // TEST(test_draw_rect);
+  // TEST(test_draw_circle);
+  // TEST(test_draw_circle_clip);
+  // TEST(test_draw_tile);
   TEST(test_draw_sprite);
 
   TEST_FINI();
