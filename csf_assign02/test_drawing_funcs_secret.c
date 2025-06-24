@@ -74,6 +74,7 @@ void check_picture(struct Image *img, Picture *p) {
     char c = p->pic[i];
     uint32_t expected_color = lookup_color(c, p->colors);
     uint32_t actual_color = img->data[i];
+    // printf("%d vs real %d at %i \n", actual_color, expected_color, i);
     ASSERT(actual_color == expected_color);
   }
 }
@@ -118,7 +119,7 @@ int main(int argc, char **argv) {
 
   // TODO: add TEST() directives for your helper functions
   TEST(test_draw_pixel);
-#if 0
+#if 1
   TEST(test_draw_rect);
   TEST(test_draw_circle);
   TEST(test_draw_circle_clip);
@@ -990,7 +991,7 @@ void test_draw_circle_secret_1(TestObjs *objs) {
 
   Picture expected = {
     { {'r', red}, {'b', blue}, {'n', blend}, {' ', black} },
-    "                        "
+    "                        "    //24x20
     "                        "
     "                        "
     "                        "
@@ -1026,7 +1027,7 @@ void test_draw_circle_secret_2(TestObjs *objs) {
 
   Picture expected = {
     { {'r', red}, {'b', blue}, {'n', blend}, {' ', black} },
-    "             bbbbbbbbb  "
+    "             bbbbbbbbb  "    //24x20
     "            bbbbbbbbbbb "
     "         r  bbbbbbbbbbb "
     "    rrrrrrrrnnnbbbbbbbb "

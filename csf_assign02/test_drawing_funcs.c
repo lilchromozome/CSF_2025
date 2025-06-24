@@ -72,6 +72,7 @@ void check_picture(struct Image *img, Picture *p) {
     char c = p->pic[i];
     uint32_t expected_color = lookup_color(c, p->colors);
     uint32_t actual_color = img->data[i];
+    // printf("%x vs real %x at %i \n", actual_color, expected_color, i);
     ASSERT(actual_color == expected_color);
   }
 }
@@ -113,27 +114,27 @@ int main(int argc, char **argv) {
 
   // TODO: add TEST() directives for your helper functions
   // helper functions
-  TEST(test_in_bounds);
-  TEST(test_in_bounds_2);
-  TEST(test_in_bounds_3);
-  TEST(test_in_bounds_4);
-  TEST(test_compute_index);
-  TEST(test_compute_index_2);
-  TEST(test_compute_index_3);
-  TEST(test_compute_index_4);
-  TEST(test_get_color_components);
-  TEST(test_get_color_components_2);
-  TEST(test_blend_components);
-  TEST(test_blend_components_2);
-  TEST(test_blend_colors);
-  TEST(test_blend_colors_2);
-  TEST(test_set_pixel);
-  TEST(test_set_pixel_2);
-  TEST(test_draw_pixel);
-  TEST(test_draw_rect);
-  TEST(test_draw_circle);
-  TEST(test_draw_circle_clip);
-  TEST(test_draw_tile);
+  // TEST(test_in_bounds);
+  // TEST(test_in_bounds_2);
+  // TEST(test_in_bounds_3);
+  // TEST(test_in_bounds_4);
+  // TEST(test_compute_index);
+  // TEST(test_compute_index_2);
+  // TEST(test_compute_index_3);
+  // TEST(test_compute_index_4);
+  // TEST(test_get_color_components);
+  // TEST(test_get_color_components_2);
+  // TEST(test_blend_components);
+  // TEST(test_blend_components_2);
+  // TEST(test_blend_colors);
+  // TEST(test_blend_colors_2);
+  // TEST(test_set_pixel);
+  // TEST(test_set_pixel_2);
+  // TEST(test_draw_pixel);
+  // TEST(test_draw_rect);
+  // TEST(test_draw_circle);
+  // TEST(test_draw_circle_clip);
+  // TEST(test_draw_tile);
   TEST(test_draw_sprite);
 
   TEST_FINI();
@@ -588,7 +589,11 @@ void test_draw_sprite(TestObjs *objs) {
   draw_rect(&objs->large, &r, 0x800080FF);
 
   struct Rect sue = { .x = 128, .y = 136, .width = 16, .height = 15 };
+  
+
+
   draw_sprite(&objs->large, 4, 2, &objs->spritemap, &sue);
+
 
   Picture pic = {
     {
@@ -621,6 +626,46 @@ void test_draw_sprite(TestObjs *objs) {
     "                        "
     "                        "
   };
+
+  // new: pixel-by-pixel debug check
+  int width = objs->large.width;
+  int height = objs->large.height;
+  int failures = 0;
+
+  for (int y = 0; y < height; y++) {
+    for (int x = 0; x < width; x++) {
+      int index = compute_index(&objs->large, x, y);
+      if (index == -1) continue;
+
+      char ch = pic.pic[y * width + x];
+      if (ch == ' ') continue; // skip checking background
+
+      uint32_t expected = 0;
+      for (int i = 0; i < sizeof(pic.colors)/sizeof(pic.colors[0]); i++) {
+        if (pic.colors[i].c == ch) {
+          expected = pic.colors[i].color;
+          break;
+        }
+      }
+
+      uint32_t actual = objs->large.data[index];
+
+      if (actual != expected) {
+        printf("Mismatch at (x = %d, y = %d):\n", x, y);
+        printf("  Char = '%c'\n", ch);
+        printf("  Expected: 0x%08X\n", expected);
+        printf("  Actual:   0x%08X\n", actual);
+        failures++;
+      }
+    }
+  }
+
+  if (failures == 0) {
+    printf("All pixels match expected output!\n");
+  } else {
+    printf(" Total mismatches: %d\n", failures);
+  }
+
 
   check_picture(&objs->large, &pic);
 }

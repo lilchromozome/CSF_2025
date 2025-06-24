@@ -40,27 +40,37 @@
   .globl in_bounds
 in_bounds:
     # move  img.width in eax, img.height in ecx
-    movl    (%rdi), %eax       # eax = img.width
-    movl    4(%rdi), %ecx      # ecx = img-.eight
+
+    pushq   %r12
+    pushq   %r13
+    subq    $16, %rsp
+    movl    (%rdi), %r12d       # r12 = img.width
+    movl    4(%rdi), %r13d      # r13 = img.height
 
     /* if (y < 0) return false; */
     cmpl    $0, %edx          # if (y < 0)
     jl      .Lfalse           # return false
     /* if (y >= img_height) return false; */
-    cmpl    %ecx, %edx          # if (y >= img_height)
+    cmpl    %r13d, %edx          # if (y >= img_height)
     jge     .Lfalse             # return false
     /* if (x < 0) return false; */
     cmpl    $0, %esi            # if (x < 0)
     jl      .Lfalse             # return false
     /* if (x >= img_width) return false; */
-    cmpl    %eax, %esi          # if (x >= img_width)
+    cmpl    %r12d, %esi          # if (x >= img_width)
     jge     .Lfalse             # return false
 
+    addq  $16, %rsp
+    popq  %r13
+    popq  %r12
     # all vals in bounds -> return true
     movl    $1, %eax        # move 1 to return register
     ret
 .Lfalse:
 	# not in bounds -> retun false;
+    addq  $16, %rsp
+    popq  %r13
+    popq  %r12
     xorl 	%eax, %eax          # clear return register
     ret
 
@@ -438,80 +448,57 @@ draw_rect:
   # void draw_rect(struct Image *img, const struct Rect *rect, uint32_t color)
   # %rdi = img, %rsi = rect, %edx = color
 
-  pushq   %r12                # callee-saved
-  pushq   %r13                # callee-saved
-  pushq   %r14                # callee-saved
-  subq    $32, %rsp           # align stack (3 + 1) * 8 = 32 mod 16 = 0
+  pushq   %r12                # callee-saved rect
+  pushq   %r13                # callee-saved color
+  pushq   %r14                # callee-saved  max_x
+  pushq   %r15                # callee-saved  max_y
+  subq    $48, %rsp           # align stack (3 + 1) * 8 = 32 mod 16 = 0
   
-  movl %edx, %r12d           # save color in %r12d
+  movq %rsi, %r12          # r12 = rect pointer
+  movl %edx, %r13d           # r13d = color
 
-  movl 8(%rsi), %eax         # width
-  testl %eax, %eax
-  jle .Ldone
-
-  movl 12(%rsi), %eax        # height
-  testl %eax, %eax
-  jle .Ldone
-
-  # min_x = rect->x, min_y = rect->y
-  movl 0(%rsi), %r8d         # min_x
-  movl 4(%rsi), %r9d         # min_y
+  # Load rect->x, rect->y, rect->width, rect->height
+  movl RECT_X_OFFSET(%r12), %esi        # esi = col
+  movl RECT_Y_OFFSET(%r12), %edx        # edx = row
+  movl RECT_WIDTH_OFFSET(%r12), %r14d
+  movl RECT_HEIGHT_OFFSET(%r12), %r15d
 
   # max_x = rect->x + rect->width
-  movl %r8d, %r10d
-  addl 8(%rsi), %r10d
+  addl %esi, %r14d      
 
   # max_y = rect->y + rect->height
-  movl %r9d, %r11d
-  addl 12(%rsi), %r11d
+  addl %edx, %r15d
 
-  # clip min_x to >= 0
-  cmpl $0, %r8d
-  movl $0, %ecx
-  cmovl %ecx, %r8d
+.Lrect_row_loop:
+  cmpl %r15d, %edx          # if row >= max_y
+  jge .Ldraw_rect_done
 
-  # clip min_y to >= 0
-  cmpl $0, %r9d
-  movl $0, %ecx
-  cmovl %ecx, %r9d
+  movl RECT_X_OFFSET(%r12), %esi  # reset col to rect->x
 
-  # clip max_x to <= img->width
-  movl 0(%rdi), %eax         # img->width
-  cmpl %eax, %r10d
-  cmovg %eax, %r10d
-
-  # clip max_y to <= img->height
-  movl 4(%rdi), %eax         # img->height
-  cmpl %eax, %r11d
-  cmovg %eax, %r11d
-
-  # for (int row = min_y; row < max_y; row++)
-  movl %r9d, %r14d           # r14d = row
-
-.Lrow_loop:
-  cmpl %r11d, %r14d           # if row >= max_y
-  jge .Ldone
-  movl %r8d, %r13d           # r15d = col
-
-.Lcol_loop:
-  cmpl %r10d, %r13d           # if col >= max_x
-  jge .Lnext_row
+.Lrect_col_loop:
+  cmpl %r14d, %esi        # if col >= max_x
+  jge .Lrect_end_col_loop
 
   # draw_pixel(img, col, row, color)
-  movl %r13d, %esi           # x = col
-  movl %r14d, %edx           # y = row
-  movl %r12d, %ecx           # color
+  movl %r13d, %ecx          # restore color to 4th arg
+  pushq %rsi                # save col to stack
+  pushq %rdx                # save row to stack
+  subq    $32, %rsp         # align stack
   call draw_pixel
+  addq    $32, %rsp         # restore stack and arg vars
+  popq %rdx                 
+  popq %rsi
 
-  incl %r13d
-  jmp .Lcol_loop
+  incl %esi                  # move to next col
+  jmp .Lrect_col_loop
 
-.Lnext_row:
-  incl %r14d
-  jmp .Lrow_loop
+.Lrect_end_col_loop:
+  incl %edx                   # move to next row
+  jmp .Lrect_row_loop
 
-.Ldone:
-  addq $32, %rsp   # restore stack 
+.Ldraw_rect_done:
+  addq $48, %rsp             # restore stack
+  popq %r15
   popq %r14
   popq %r13
   popq %r12
@@ -534,123 +521,154 @@ draw_circle:
 	/* TODO: implement */
   /* void draw_circle(struct Image *img, int32_t x, int32_t y, int32_t r, uint32_t color) */
 
-  pushq   %r12
-  pushq   %r13
-  pushq   %r14
-  pushq   %r15
-  subq    $32, %rsp
+  pushq   %r12           # callee saved x_min
+  pushq   %r13           # callee saved x_max
+  pushq   %r14           # callee saved y_min
+  pushq   %r15           # callee saved y_max
+  pushq   %r11           # temp var: img->width, img->height, i
+  pushq   %r10           # temp var: j
+  pushq   %rbx           # callee saved diff_x
+  pushq   %rbp           # callee save diff_y
+  subq    $80, %rsp
+  movl    %r8d, (%rsp)   # save color to the stack
 
-  movl    %r8d, %r12d       # r12 = color
-  movl    %esi, %r13d       # r13 = x
-  movl    %edx, %r14d       # r14 = y
-  movl    %ecx, %r15d       # r15 = r
 
   /* if (r < 0) return */
   cmpl    $0, %ecx
   jl      .Ldone_circle
+  
+  movl    %esi, %r12d       # move x to r12 to store x_min
+  cmpl    %r12d, %ecx       # if r12 > ecx, if x > r
+  jle     .Lx_min_not_zero
+  movl    $0, %r12d         # x_min = 0
+  jmp     .Lset_x_max
+.Lx_min_not_zero:
+  subl    %ecx, %r12d       # r12d = x_min = x - r
+.Lset_x_max:
+  movl    %esi, %r13d       # move x to r12 to store x_max
+  addl    %ecx, %r13d       # x_max = x + r # r13d = x_max 
 
-  # x_min = x - r
-  # x_max = x + r
-  movl    %r13d, %r8d
-  subl    %ecx, %r8d        # r8d = x_min
-  movl    %r13d, %r9d
-  addl    %ecx, %r9d        # r9d = x_max
+  movl    %edx, %r14d       # move y to r14 to store y_min 
+  cmpl    %r14d, %ecx       # if r14 > ecx, if y > r
+  jle     .Ly_min_not_zero
+  movl    $0, %r14d         # y_min = 0
+  jmp     .Lset_y_max
+.Ly_min_not_zero:
+  subl    %ecx, %r14d       # r14d = y_min  = y - r
+.Lset_y_max:
+  movl    %edx, %r15d       # move y to r15 to store y_max
+  addl    %ecx, %r15d       # r15d = y_max = y + r
 
-  # y_min = y - r
-  # y_max = y + r
-  movl    %r14d, %r10d
-  subl    %ecx, %r10d       # r10d = y_min
-  movl    %r14d, %r11d
-  addl    %ecx, %r11d       # r11d = y_max
 
   /* 
   if(y_min < 0) y_min = 0;
-  if(x_min < 0) x_min = 0;
+  if(x_min < 0) x_min = 0; 
   if(y_max >= img->height) y_max = img->height-1;
   if(x_max >= img->width) x_max = img->width-1;
-  */ 
+   */
 
-  # clamp: y_min = max(0, y_min)
-  movl    $0, %ecx        # ecx = 0
-  cmpl    $0, %r10d
-  cmovl   %ecx, %r10d     # r10 = y_min
-
-  # x_min = max(0, x_min)
-  cmpl    $0, %r8d
-  cmovl   %ecx, %r8d       # r8 = x_min
-
+.Lcheck_ymax:
   # y_max = min(img->height, y_max)
-  movl    4(%rdi), %eax     # eax = img->height
-  movl    %r11d, %ecx
-  cmpl    %ecx, %eax        # if img->height < y_max
-  cmovl   %eax, %ecx
-  movl    %ecx, %r11d       # r11 = y_max
+  movl    IMAGE_HEIGHT_OFFSET(%rdi), %r11d     # r11d = img->height
+  cmpl    %r11d, %r15d        /* if(y_max >= img->height) */
+  jl      .Lcheck_xmax
+  movl    %r11d, %r15d      # y_max = img->height-1;
+  subl    $1, %r15d
 
+.Lcheck_xmax:
   # x_max = min(img->width, x_max)
-  movl    (%rdi), %eax      # eax = img->width
-  movl    %r9d, %ecx
-  cmpl    %ecx, %eax        # if img->width < x_max
-  cmovl   %eax, %ecx
-  movl    %ecx, %r9d        # r9 = x_max
+  movl    IMAGE_WIDTH_OFFSET(%rdi), %r11d      # eax = img->width
+  cmpl    %r11d, %r13d      /* if(x_max >= img->width) */
+  jl      .Lskip_xmax
+  movl    %r11d, %r13d      # x_max = img->width-1
+  subl    $1, %r13d
+.Lskip_xmax:
 
 # y loop: for (int32_t i = y_min; i <= y_max; ++i)
+  movl    %r14d, %r11d         # r14d = i = y_min
 .Ly_loop:
-  cmpl    %r11d, %r10d      # i <= y_max
+  cmpl    %r15d, %r11d      /* if i > y_max, skip */
   jg      .Ldone_circle
   # x loop: for (int32_t j = x_min; j <= x_max; ++j) 
-  movl    %r8d, %ecx        # ecx = j
+  movl    %r12d, %r10d        # r10 = j
 
 .Lx_loop:
-  cmpl    %r9d, %ecx        # j <= x_max
-  jg      .Ladvance_y
+  cmpl    %r13d, %r10d        /* if j > x_max, skip */
+  jg      .Lnext_y
 
   /* if (!in_bounds(img, j, i)) continue; */
-  movl    %ecx, %esi        # esi = j
-  movl    %r10d, %edx       # edx = i
+  subq    $16, %rsp          # make space to store esi = x, edx = y
+  movl    %esi, (%rsp)
+  movl    %edx, 4(%rsp)
+  movl    %r10d, %esi        # esi = j
+  movl    %r11d, %edx       # edx = i
   call    in_bounds
-  testl   %eax, %eax
-  je      .Ladvance_x
+  movl    (%rsp), %esi        # restor vars and pointer
+  movl    4(%rsp), %edx
+  addq    $16, %rsp
+  cmpl    $0, %eax            # if not in bounds, skip
+  je      .Lnext_x
+  
 
-  # compute diff_x = center_x - j
-  movl    %r13d, %eax       # eax = center_x
-  subl    %ecx, %eax        # eax = diff_x
-  imull   %eax, %eax        # eax = diff_x^2
+  #  diff_x = x - j
+  movl    %esi, %ebx       # ebx = x
+  subl    %r10d, %ebx       # ebx = diff_x = x - j
+  imull   %ebx , %ebx      # ebx  = diff_x^2
 
-  # compute diff_y = center_y - i
-  movl    %r14d, %edx       # edx = center_y
-  subl    %r10d, %edx       # edx = diff_y
-  imull   %edx, %edx        # edx = diff_y^2
+  #  diff_y = y - i
+  movl    %edx, %ebp       # ebp = y
+  subl    %r11d, %ebp       # ebp = diff_y = y - i
+  imull   %ebp, %ebp        # ebp = diff_y^2
 
-  /*  if (diff_x * diff_x + diff_y * diff_y <= r * r)  */
-  imull   %r15d, %r15d      # r15d = r * r
+  # total squared distance
+  addl    %ebp, %ebx        # ebx = diff_x^2 + diff_y^2
 
-  addl    %edx, %eax        # eax = diff_x^2 + diff_y^2
-  cmpl    %r15d, %eax       # r^2 - eax > 0
-  jg      .Ladvance_x
+  # compute r^2
+  movl    %ecx, %ebp       # ebp = r
+  imull   %ebp, %ebp       # ebp = r * r
+
+  # compare
+  cmpl    %ebp, %ebx        # if (diff^2 > r^2)
+  jg      .Lnext_x
 
   # draw_pixel(img, j, i, color)
-  movl    %ecx, %esi        # esi = j
-  movl    %r10d, %edx       # edx = i
-  movl    %r12d, %ecx       # ecx = color
-  call    draw_pixel 
+  subq    $32, %rsp          # make space to store esi = x, edx = y, ecx = r
+  movl    %esi, (%rsp)
+  movl    %edx, 4(%rsp)
+  movl    %ecx, 8(%rsp)
+  movl    %r11d, 12(%rsp)
+  movl    %r10d, 16(%rsp)
+  movl    %r10d, %esi        # esi = j
+  movl    %r11d, %edx       # edx = i
+  movl    32(%rsp), %ecx       # ecx = color
+  call    draw_pixel
+  movl    (%rsp), %esi
+  movl    4(%rsp), %edx
+  movl    8(%rsp), %ecx
+  movl    12(%rsp), %r11d
+  movl    16(%rsp), %r10d
+  addq    $32, %rsp
 
-.Ladvance_x:
-    incl    %ecx              # ++j
+.Lnext_x:
+    incl    %r10d              # ++j
     jmp     .Lx_loop
 
-.Ladvance_y:
-    incl    %r10d             # ++i
+.Lnext_y:
+    incl    %r11d             # ++i
     jmp     .Ly_loop
 
 .Ldone_circle:
     # Restore stack
-    addq    $32, %rsp
+    addq    $80, %rsp
+    popq    %rbp
+    popq    %rbx
+    popq    %r10
+    popq    %r11
     popq    %r15
     popq    %r14
     popq    %r13
     popq    %r12
     ret
-
 /*
  * Draw a tile by copying all pixels in the region
  * enclosed by the tile parameter in the tilemap image
@@ -665,165 +683,112 @@ draw_circle:
  *   %rcx - pointer to Image (the tilemap)
  *   %r8  - pointer to Rect (the tile)
  */
-.globl draw_tile
-draw_tile:
-  # rdi = img
-  # rsi = tilemap
-  # edx = tile_x
-  # ecx = tile_y
-  # r8d = x
-  # r9d = y
+    .globl draw_tile
+  draw_tile:
+    pushq %rbp              # callee saved for stack
+    pushq %rbx              # callee saved for tile rect
+    pushq %r12              # tile map data array
+    pushq %r13              # callee saved tilemap data
+    pushq %r14              # callee saved count row
+    pushq %r15              # callee saved count col
+    movq %rsp, %rbp
+    subq $80, %rsp
+    movq  %rdi, (%rsp)      # save destination img to stack
+    movq  %rcx, 8(%rsp)     # save tile map to stack   
 
-  pushq %rbx
-  pushq %r12
-  pushq %r13
-  pushq %r14
-  pushq %r15
-  pushq %rbp
+    # Initialize variables
+    movq %r8, %rbx                # tile rect
+    movl $0, %r14d                # j = row 
+    movl $0, %r15d                # i = col
+    movl %edx, %r10d              #  dst_y
+    movl %esi, %r11d              # dst_x
 
-  # Load tile->x, tile->y, tile->width, tile->height
-  movl 0(%r8), %r10d        # tile_x
-  movl 4(%r8), %r11d        # tile_y
-  movl 8(%r8), %r12d        # tile_width
-  movl 12(%r8), %r13d       # tile_height
+    # tile->x, tile->y, tile->width, tile->height
+    movl RECT_X_OFFSET(%rbx), %esi
+    movl RECT_Y_OFFSET(%rbx), %edx
+    movl RECT_WIDTH_OFFSET(%rbx), %esi
+    movl %esi, -32(%rbp)          # tile->width
+    movl RECT_HEIGHT_OFFSET(%rbx), %edx
+    movl %edx, -24(%rbp)          # tile->height
+    
+    # Check bounds of tilemap
+    movq 8(%rsp), %rdi              # tilemap image
+    call in_bounds
+    cmpl $0, %eax                 /* if dest x,y not in bounds, return */
+    je .Ltile_end_row_loop      
 
-  # Bounds check on tilemap (tile_x + tile_width <= tilemap->width)
-  cmpl $0, %r10d
-  jl .Ldone_tile
-  cmpl $0, %r11d
-  jl .Ldone_tile
+    movl RECT_X_OFFSET(%rbx), %esi
+    addl RECT_WIDTH_OFFSET(%rbx), %esi  
+    decl %esi                    # esi = x + width - 1
 
-  movl 0(%rsi), %eax        # tilemap->width
-  movl %r10d, %ebx
-  addl %r12d, %ebx
-  cmpl %eax, %ebx
-  jg .Ldone_tile
+    movl RECT_Y_OFFSET(%rbx), %edx
+    addl RECT_HEIGHT_OFFSET(%rbx), %edx
+    decl %edx                    # edx = y + height - 1
 
-  movl 4(%rsi), %eax        # tilemap->height
-  movl %r11d, %ebx
-  addl %r13d, %ebx
-  cmpl %eax, %ebx
-  jg .Ldone_tile
+    movq 8(%rsp), %rdi              # tilemap image
+    call in_bounds
+    cmpl $0, %eax                 /* if target x,y not in bounds, return */
+    je .Ltile_end_row_loop       
+  .Ltile_row_loop:
+    cmpl -24(%rbp), %r14d         # if (j >= height)
+    jge .Ltile_end_row_loop
+    movl $0, %r15d                # reset col, i = 0
 
-  # Clip to left/top screen edge
-  xorl %r14d, %r14d         # start_col
-  xorl %r15d, %r15d         # start_row
-  movl %r12d, %ebp          # width
-  movl %r13d, %ebx          # height
+  .Ltile_col_loop:
+    cmpl -32(%rbp), %r15d         # if (i >= width)
+    jge .Ltile_end_col_loop
 
-  cmpl $0, %r8d             # if x < 0
-  jge .Lcheck_y
-  negl %r8d
-  movl %r8d, %r14d          # start_col = -x
-  subl %r8d, %ebp           # width -= -x
-  xorl %r8d, %r8d           # x = 0
+    # Check bounds for destination pixel
+    movl %r11d, %esi      # esi = dest x
+    addl %r15d, %esi      # esi = x + col
+    movl %r10d, %edx      # edx = dest y
+    addl %r14d, %edx      # edx = y + row
+    movq (%rsp), %rdi       # move dest img to 1st arg
+    call in_bounds        # if not in bounds, continue
+    cmpl $0, %eax
+    je .Lcol_advance
 
-.Lcheck_y:
-  cmpl $0, %r9d             # if y < 0
-  jge .Lclip_bounds
-  negl %r9d
-  movl %r9d, %r15d          # start_row = -y
-  subl %r9d, %ebx           # height -= -y
-  xorl %r9d, %r9d           # y = 0
+    # compute index  in tilemap image
+    movl %r15d, %esi                # esi = col
+    addl RECT_X_OFFSET(%rbx), %esi  # esi = tile->x + col
+    movl %r14d, %edx                # edx = row
+    addl RECT_Y_OFFSET(%rbx), %edx  # edc = tile->y + row
+    movq 8(%rsp), %rdi                 # restore dest img for 1st arg
+    call compute_index 
+    cmpl $-1, %eax                  # if invalid index, continue
+    je .Lcol_advance
+    movq IMAGE_DATA_OFFSET(%rdi), %r12 # r12 = tilemap data array
+    movl (%r12, %rax, 4), %r13d     # r13d = tilemap->data[index_tile]
 
-.Lclip_bounds:
-  # width = min(width, img->width - x)
-  movl 0(%rdi), %eax
-  subl %r8d, %eax
-  cmpl %eax, %ebp
-  cmovg %eax, %ebp
+    # compute index in dest image
+    movl %r11d, %esi            # esi = col
+    addl %r15d, %esi            # esi = col + dest x
+    movl %r10d, %edx            # edx = row
+    addl %r14d, %edx            # edx = row + dest y
+    movq (%rsp), %rdi           # restor dest img for 1st arf
+    call compute_index
+    cmpl $-1, %eax
+    je .Lcol_advance            # if invalid index, continue
+    movq IMAGE_DATA_OFFSET(%rdi), %r12  
+    movl %r13d, (%r12, %rax, 4)     # set pixel to tilemap data
 
-  # height = min(height, img->height - y)
-  movl 4(%rdi), %eax
-  subl %r9d, %eax
-  cmpl %eax, %ebx
-  cmovg %eax, %ebx
+  .Lcol_advance:
+    incl %r15d                # col++
+    jmp .Ltile_col_loop
 
-  # width = min(width, tilemap->width - tile_x - start_col)
-  movl 0(%rsi), %eax
-  subl %r10d, %eax
-  subl %r14d, %eax
-  cmpl %eax, %ebp
-  cmovg %eax, %ebp
+  .Ltile_end_col_loop:
+    incl %r14d                # row++
+    jmp .Ltile_row_loop
 
-  # height = min(height, tilemap->height - tile_y - start_row)
-  movl 4(%rsi), %eax
-  subl %r11d, %eax
-  subl %r15d, %eax
-  cmpl %eax, %ebx
-  cmovg %eax, %ebx
-
-  # Final check
-  cmpl $0, %ebp
-  jle .Ldone_tile
-  cmpl $0, %ebx
-  jle .Ldone_tile
-
-  # r8d = screen x, r9d = screen y
-  # ebp = clipped width, ebx = clipped height
-  # r10d = tile_x, r11d = tile_y
-  # r14d = start_col, r15d = start_row
-
-  xorl %r12d, %r12d         # col = 0
-
-.Lcol_loop_tile:
-  cmpl %ebp, %r12d
-  jge .Ldone_tile
-  xorl %r13d, %r13d         # row = 0
-
-.Lrow_loop_tile:
-  cmpl %ebx, %r13d
-  jge .Lnext_col
-
-  # img_index = compute_index(img, x + col, y + row)
-  movq %rdi, %rsi           # rdi preserved, move to rsi
-  movl %r8d, %r8d           # x
-  addl %r12d, %r8d
-  movl %r9d, %r9d           # y
-  addl %r13d, %r9d
-  movq %rsi, %rdi
-  call compute_index
-  cmpl $-1, %eax
-  je .Lskip_pixel
-  movl %eax, %r14d          # img index
-
-  # tile_index = compute_index(tilemap, tile_x + start_col + col, tile_y + start_row + row)
-  movl %r10d, %r8d
-  addl %r14d, %r8d
-  addl %r12d, %r8d
-
-  movl %r11d, %r9d
-  addl %r15d, %r9d
-  addl %r13d, %r9d
-
-  movq %rsi, %rdi           # tilemap in rsi
-  call compute_index
-  cmpl $-1, %eax
-  je .Lskip_pixel
-  movl %eax, %r15d          # tile index
-
-  # img->data[img_index] = tilemap->data[tile_index]
-  movq 16(%rdi), %rsi       # tilemap->data
-  movq 16(%rsi), %rdi       # img->data
-  movl (%rsi, %r15, 4), %eax
-  movl %eax, (%rdi, %r14, 4)
-
-.Lskip_pixel:
-  incl %r13d                # row++
-  jmp .Lrow_loop
-
-.Lnext_col:
-  incl %r12d                # col++
-  jmp .Lcol_loop
-
-.Ldone_tile:
-  popq %rbp
-  popq %r15
-  popq %r14
-  popq %r13
-  popq %r12
-  popq %rbx
-  ret
+  .Ltile_end_row_loop:
+    addq $80, %rsp        # restor pointer and stack vars
+    popq %r15
+    popq %r14
+    popq %r13
+    popq %r12
+    popq %rbx
+    popq %rbp
+    ret
 
 /*
  * Draw a sprite by copying all pixels in the region
@@ -840,149 +805,119 @@ draw_tile:
  *   %rcx - pointer to Image (the spritemap)
  *   %r8  - pointer to Rect (the sprite)
  */
-	.globl draw_sprite
+.globl draw_sprite
 draw_sprite:
-	/* TODO: implement */
-  pushq %rbx
-  pushq %r12
-  pushq %r13
-  pushq %r14
-  pushq %r15
-  pushq %rbp
+    # save registers
+    pushq %rbp
+    movq %rsp, %rbp
+    pushq %rbx
+    pushq %r12
+    pushq %r13
+    pushq %r14
+    pushq %r15
 
-  movl 0(%r8), %r9d
-  movl 4(%r8), %r10d
-  movl 8(%r8), %r11d
-  movl 12(%r8), %ebp
+    subq $80, %rsp                 # reserve space: [rbp-32]=width, [rbp-24]=height
 
-  cmpl $0, %r9d
-  jl .Ldone_sprite
-  cmpl $0, %r10d
-  jl .Ldone_sprite
+    # Save parameters
+    movq %rdi, %r12                # r12 = dest image pointer
+    movl %esi, %r13d               # r13d = dest x
+    movl %edx, %r14d               # r14d = dest y
+    movq %rcx, %r15                # r15 = spritemap image pointer
+    movq %r8, %rbx                 # rbx = pointer to sprite rect
 
-  movl 0(%rcx), %eax        # spritemap->width
-  movl %r9d, %ebx
-  addl %r11d, %ebx
-  cmpl %eax, %ebx
-  jg .Ldone_sprite
+    # save width/height on stack
+    movl RECT_WIDTH_OFFSET(%rbx), %eax
+    movl %eax, -32(%rbp)           # width
+    movl RECT_HEIGHT_OFFSET(%rbx), %eax
+    movl %eax, -24(%rbp)           # height
 
-  movl 4(%rcx), %eax        # spritemap->height
-  movl %r10d, %ebx
-  addl %ebp, %ebx
-  cmpl %eax, %ebx
-  jg .Ldone_sprite
+    xorl %r10d, %r10d              # r10d = row (j) = 0
+.Lrow_loop:
+    cmpl -24(%rbp), %r10d          # while row(j) < height
+    jge .Ldone
 
-  # r12 = start_col
-  # r13 = start_row
-  # r14 = width
-  # r15 = height
-  xorl %r12d, %r12d         
-  xorl %r13d, %r13d
-  movl %r11d, %r14d
-  movl %ebp, %r15d
+    xorl %r11d, %r11d              # r11d = col (i) = 0
+.Lcol_loop:
+    cmpl -32(%rbp), %r11d          # while col(i) < width
+    jge .Lnext_row
 
-  cmpl $0, %edx
-  jge .Lclip_bounds_sprite
-  movl %edx, %eax
-  negl %eax
-  movl %eax, %r13d          # start_row = -y
-  subl %eax, %r15d          # height -= -y
-  xorl %edx, %edx           # y = 0
+    # sourve coorfinates in spritemap
+    # src_x = sprite.x + col, src_y = sprite.y + row
+    movl RECT_X_OFFSET(%rbx), %eax
+    addl %r11d, %eax               # src_x = rect.x + i
+    movl %eax, %esi                # %esi = src_x
 
-  .Lclip_bounds_sprite:
-    movl 0(%rdi), %eax
-    subl %esi, %eax
-    cmpl %eax, %r14d
-    cmovg %eax, %r14d
+    movl RECT_Y_OFFSET(%rbx), %eax
+    addl %r10d, %eax               # src_y = rect.y + j
+    movl %eax, %edx                # %edx = src_y
 
-    movl 4(%rdi), %eax
-    subl %edx, %eax
-    cmpl %eax, %r15d
-    cmovg %eax, %r15d
+    # in_bounds(spritemap, src_x, src_y)
+    movq %r15, %rdi
+    call in_bounds
+    testl %eax, %eax
+    je .Lcol_continue
 
-    movl 0(%rcx), %eax
-    subl %r9d, %eax
-    subl %r12d, %eax
-    cmpl %eax, %r14d
-    cmovg %eax, %r14d
-
-    movl 4(%rcx), %eax
-    subl %r10d, %eax
-    subl %r13d, %eax
-    cmpl %eax, %r15d
-    cmovg %eax, %r15d
-
-    cmpl $0, %r14d
-    jle .Ldone_sprite
-    cmpl $0, %r15d
-    jle .Ldone_sprite
-
-    movq 16(%rdi), %rsi       # img->data
-    movq 16(%rcx), %rdi       # spritemap->data
-    xorl %ebx, %ebx
-
-  .Lcol_loop_sprite:
-    cmpl %r14d, %ebx
-    jge .Ldone_sprite
-    xorl %eax, %eax 
-  
-  .Lrow_loop_sprite:
-    cmpl %r15d, %eax
-    jge .Lnext_col_sprite
-
-    # img_index = compute_index(img, x + col, y + row)
-    movl %esi, %r8d          # r12 = x
-    addl %ebx, %r8d          # r12 += col
-    movl %edx, %r9d          # r13 = y
-    addl %eax, %r9d          # r13 += row
+    # compute_index(spritemap, src_x, src_y)
+    movl RECT_X_OFFSET(%rbx), %eax
+    addl %r11d, %eax
+    movl %eax, %esi                 # %esi = src_x
+    movl RECT_Y_OFFSET(%rbx), %eax
+    addl %r10d, %eax
+    movl %eax, %edx                 # edi = src_y
+    movq %r15, %rdi                 #rdi = spritemap
     call compute_index
     cmpl $-1, %eax
-    je .Lskip_sprite_pixel
-    movl %eax, %r10d          # img index
+    je .Lcol_continue               # skip of index invalid
 
-    # spritemap_index = compute_index(spritemap, tile_x + start_col + col, tile_y + start_row + row)
-    movl %r9d, %r8d
-    movl %r10d, %r9d
-    movl %r9d, %r11d
-    addl %r13d, %r11d
-    addl %eax, %r11d
-    movl %r10d, %r12d
-    addl %r12d, %r12d
-    addl %ebx, %r12d
-    movq %rdi, %rdi
-    movl %r12d, %r8d
-    movl %r11d, %r9d
-    call compute_index
-    movl %eax, %r11d
-    cmpl $-1, %eax
-    je .Lskip_sprite_pixel
+    movl %eax, %r9d                 # r9d = index image->data
 
-    # blend
-    movl (%rdi,%r11,4), %r12d
-    movl (%rsi,%r10,4), %r13d
-    movl %r12d, %edi
-    movl %r13d, %esi
-    call blend_colors
+    # read color = spritemap->data[index]
+    movq IMAGE_DATA_OFFSET(%r15), %r8  # r8 = spritemap->data
+    movl (%r8, %r9, 4), %ecx          # %ecx = color  
 
-    movl %eax, (%rsi,%r10,4)
+    # get alpha(color), if alpha == 0, skip
+    movl %ecx, %edi                 # %edi = color of get_a
+    call get_a
+    testb %al, %al
+    je .Lcol_continue               # skip if transparent, a=0
 
-  .Lskip_sprite_pixel:
-    incl %eax
-    jmp .Lrow_loop_sprite
+    # compute dest_x = x + col, dest_y = y + row
+    movl %r13d, %eax
+    addl %r11d, %eax
+    movl %eax, %esi                # esi = dest_x
 
-  .Lnext_col_sprite:
-    incl %ebx
-    jmp .Lcol_loop_sprite
+    movl %r14d, %eax
+    addl %r10d, %eax
+    movl %eax, %edx                # edx = dest_y
 
-  .Ldone_sprite:
-    popq %rbp
+    # in_bounds(dest, x+i, y+j)
+    movq %r12, %rdi                 #rdi = dest image pointer
+    call in_bounds
+    testl %eax, %eax
+    je .Lcol_continue
+
+    # draw_pixel(dest, x+i, y+j, color)
+    movq %r12, %rdi
+    # %esi = x, %edx = y, %ecx = color 
+    call draw_pixel
+
+.Lcol_continue:
+    incl %r11d              #i++
+    jmp .Lcol_loop
+
+.Lnext_row:
+    incl %r10d                #j++
+    jmp .Lrow_loop
+
+.Ldone:
+    addq $80, %rsp
     popq %r15
     popq %r14
     popq %r13
     popq %r12
     popq %rbx
-
-	ret
+    popq %rbp
+    ret
 
 /*
 vim:ft=gas:
