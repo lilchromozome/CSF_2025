@@ -329,18 +329,15 @@ void draw_sprite(struct Image *img,
                  struct Image *spritemap,
                  const struct Rect *sprite) {
   // TODO: implement
-  if(sprite->x < 0|| sprite->y <0 || sprite->x + sprite-> width > spritemap -> width || sprite->y + sprite->height > spritemap->height) return;
+  if(!in_bounds(spritemap, sprite->x, sprite->y)) return;
+  if(!in_bounds(spritemap, sprite->x + sprite-> width, sprite->y + sprite->height)) return;
 
   for (int32_t col = 0; col < sprite->width; ++col) {
     for (int32_t row = 0; row < sprite->height; ++row) {
       int32_t out_x = x + col;
       int32_t out_y = y + row;
 
-      if (out_x < 0 || out_x >= img->width || out_y < 0 || out_y >= img->height) 
-        continue;
-
-      if (out_x < 0 || out_x >= img->width || out_y < 0 || out_y >= img->height)
-          continue;
+      if (!in_bounds(img, out_x, out_y)) continue;
 
       uint32_t index = compute_index(spritemap, sprite->x + col, sprite->y + row);
       uint32_t color = spritemap->data[index];

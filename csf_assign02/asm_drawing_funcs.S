@@ -828,103 +828,93 @@ draw_sprite:
     # save registers
     pushq %rbp
     movq %rsp, %rbp
-    pushq %rbx
-    pushq %r12
-    pushq %r13
-    pushq %r14
-    pushq %r15
-
+    pushq %rbx              # temp var for index
+    pushq %r12              # callee saved col counter
+    pushq %r13              # calleee saved row counter
+    pushq %r14              # callee saved out_x
+    pushq %r15              # callee saved out_y
     subq $80, %rsp                 # reserve space: [rbp-32]=width, [rbp-24]=height
 
-    # Save parameters
-    movq %rdi, %r12                # r12 = dest image pointer
-    movl %esi, %r13d               # r13d = dest x
-    movl %edx, %r14d               # r14d = dest y
-    movq %rcx, %r15                # r15 = spritemap image pointer
-    movq %r8, %rbx                 # rbx = pointer to sprite rect
+    movq %rdi, (%rsp)               # save dest img on stack
+    movl %esi, 8(%rsp)               # rsp+8 = dest x on stack
+    movl %edx, 12(%rsp)               # rsp+12 = dest y on stack
+
+    movq %rcx, %rdi               # 1st arg for in_bounds, spritemap
+    movl (%r8), %esi              # 2nd arg for in_bounds, sprite->x
+    movl 4(%r8), %edx              # 3rd arg for in_bounds, sprite->y
+    call in_bounds
+    cmpl $0, %eax                 #   if(!in_bounds(spritemap, sprite->x, sprite->y)) return;
+    je .Ldone
+
+    addl 8(%r8), %esi           # 2nd arg for in_bounds, sprite->x + sprite->width
+    addl 12(%r8), %edx           # 3rd arg for in_bounds, sprite->y + sprite->height
+    call in_bounds
+    cmpl $0, %eax                 #   if(!in_bounds(spritemap, sprite->x, sprite->y)) return;
+    je .Ldone
 
     # save width/height on stack
-    movl RECT_WIDTH_OFFSET(%rbx), %eax
-    movl %eax, -32(%rbp)           # width
-    movl RECT_HEIGHT_OFFSET(%rbx), %eax
-    movl %eax, -24(%rbp)           # height
+    movl RECT_WIDTH_OFFSET(%r8), %eax
+    movl %eax, -32(%rsp)           # width
+    movl RECT_HEIGHT_OFFSET(%r8), %eax
+    movl %eax, -24(%rsp)           # height
 
-    xorl %r10d, %r10d              # r10d = row (j) = 0
-.Lrow_loop:
-    cmpl -24(%rbp), %r10d          # while row(j) < height
+    xorl %r12d, %r12d              # r12d = col = 0
+.Lcol_loop:
+    cmpl -32(%rsp), %r12d          # for col < sprite->width
     jge .Ldone
 
-    xorl %r11d, %r11d              # r11d = col (i) = 0
-.Lcol_loop:
-    cmpl -32(%rbp), %r11d          # while col(i) < width
-    jge .Lnext_row
+    xorl %r13d, %r13d              # r13d = row = 0
+.Lrow_loop:
+    cmpl -32(%rsp), %r13d          # for row < sprite->height
+    jge .Lnext_col
 
-    # sourve coorfinates in spritemap
-    # src_x = sprite.x + col, src_y = sprite.y + row
-    movl RECT_X_OFFSET(%rbx), %eax
-    addl %r11d, %eax               # src_x = rect.x + i
-    movl %eax, %esi                # %esi = src_x
+    # source coordinates in spritemap
+    # int32_t out_x = x + col;
+    movl 8(%rsp), %r14d
+    addl %r12d, %r14d
+    
+    # int32_t out_y = y + row;
+    movl 12(%rsp), %r15d
+    addl %r13d, %r15d
 
-    movl RECT_Y_OFFSET(%rbx), %eax
-    addl %r10d, %eax               # src_y = rect.y + j
-    movl %eax, %edx                # %edx = src_y
-
-    # in_bounds(spritemap, src_x, src_y)
-    movq %r15, %rdi
+    movq (%rsp), %rdi             # 1st arg for in_bounds, img
+    movl %r14d, %esi              # 2nd arg for in_bounds, out_x
+    movl %r15d, %edx              # 3rd arg for in_bounds, out_y
     call in_bounds
-    testl %eax, %eax
-    je .Lcol_continue
+    cmpl $0, %eax                 # if (!in_bounds(img, out_x, out_y)) continue;
+    je .Lnext_row
 
-    # compute_index(spritemap, src_x, src_y)
-    movl RECT_X_OFFSET(%rbx), %eax
-    addl %r11d, %eax
-    movl %eax, %esi                 # %esi = src_x
-    movl RECT_Y_OFFSET(%rbx), %eax
-    addl %r10d, %eax
-    movl %eax, %edx                 # edi = src_y
-    movq %r15, %rdi                 #rdi = spritemap
-    call compute_index
-    cmpl $-1, %eax
-    je .Lcol_continue               # skip of index invalid
-
-    movl %eax, %r9d                 # r9d = index image->data
+    # uint32_t index = compute_index(spritemap, sprite->x + col, sprite->y + row);
+    movq  %rcx, %rdi               # 1st arg for compute_index, spritemap
+    movl  (%r8d), %esi             # 2nd arg for compute_index, sprite->x + col
+    addl  %r12d, %esi
+    movl  4(%r8d), %edx             # 3rd arg for compute_index, sprite->y + row
+    addl  %r13d, %edx
+    call  compute_index
+    cmpl $-1, %eax                  # eax = index
+    je .Lnext_row                   # if invalid index (-1), continue
 
     # read color = spritemap->data[index]
-    movq IMAGE_DATA_OFFSET(%r15), %r8  # r8 = spritemap->data
-    movl (%r8, %r9, 4), %ecx          # %ecx = color  
+    movq IMAGE_DATA_OFFSET(%rcx), %rbx  # rbx = spritemap->data
+    movl (%rbx, %rax, 4), %ebp          # ebp = color  
 
-    # get alpha(color), if alpha == 0, skip
-    movl %ecx, %edi                 # %edi = color of get_a
-    call get_a
-    testb %al, %al
-    je .Lcol_continue               # skip if transparent, a=0
+    # store spritemap pointer on stack
+    movq  %rcx, -40(%rsp)
 
-    # compute dest_x = x + col, dest_y = y + row
-    movl %r13d, %eax
-    addl %r11d, %eax
-    movl %eax, %esi                # esi = dest_x
-
-    movl %r14d, %eax
-    addl %r10d, %eax
-    movl %eax, %edx                # edx = dest_y
-
-    # in_bounds(dest, x+i, y+j)
-    movq %r12, %rdi                 #rdi = dest image pointer
-    call in_bounds
-    testl %eax, %eax
-    je .Lcol_continue
-
-    # draw_pixel(dest, x+i, y+j, color)
-    movq %r12, %rdi
-    # %esi = x, %edx = y, %ecx = color 
+    movq  (%rsp), %rdi        # 1st arg for draw_pixel, img
+    movl  %r14d, %esi         # 2nd arg for draw_pixel, out_x
+    movl  %r15d, %edx          # 3rd arg for draw_pixel, out_y
+    movl  %ebp, %ecx          # 4th arg for draw_pixel, color
     call draw_pixel
 
-.Lcol_continue:
-    incl %r11d              #i++
+    movq  -40(%rsp), %rcx      # restore spritemap pointer
+
+.Lnext_col:
+    incl %r12d              # col++
     jmp .Lcol_loop
 
 .Lnext_row:
-    incl %r10d                #j++
+    incl %r13d                # row++
     jmp .Lrow_loop
 
 .Ldone:
