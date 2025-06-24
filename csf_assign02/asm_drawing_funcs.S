@@ -438,7 +438,7 @@ draw_rect:
   # void draw_rect(struct Image *img, const struct Rect *rect, uint32_t color)
   # %rdi = img, %rsi = rect, %edx = color
 
-  pushq   %r12                # callee-saved
+  pushq   %r12                # callee-saved img
   pushq   %r13                # callee-saved
   pushq   %r14                # callee-saved
   pushq   %r15                # callee-saved
@@ -521,124 +521,129 @@ draw_circle:
 	/* TODO: implement */
   /* void draw_circle(struct Image *img, int32_t x, int32_t y, int32_t r, uint32_t color) */
 
-  pushq   %r12
-  pushq   %r13
-  pushq   %r14
-  pushq   %r15
-  subq    $32, %rsp
+  pushq   %r12           # callee saved x_min
+  pushq   %r13           # callee saved x_max
+  pushq   %r14           # callee saved y_min
+  pushq   %r15           # callee saved y_max
+  pushq   %r11           # temp var: img->width, img->height, i
+  pushq   %r10           # temp var: j
+  pushq   %rbx           # callee saved diff_x
+  pushq   %rbp           # callee save diff_y
+  subq    $64, %rsp
 
-  movl    %r8d, %r12d       # r12 = color
-  movl    %esi, %r13d       # r13 = x
-  movl    %edx, %r14d       # r14 = y
-  movl    %ecx, %r15d       # r15 = r
 
   /* if (r < 0) return */
   cmpl    $0, %ecx
   jl      .Ldone_circle
+ 
+  movl    %esi, %r12d       # x_min = x - r
+  subl    %ecx, %r12d       # r12d = x_min
+  movl    %esi, %r13d       # x_max = x + r
+  addl    %ecx, %r13d       # r13d = x_max 
 
-  # x_min = x - r
-  # x_max = x + r
-  movl    %r13d, %r8d
-  subl    %ecx, %r8d        # r8d = x_min
-  movl    %r13d, %r9d
-  addl    %ecx, %r9d        # r9d = x_max
-
-  # y_min = y - r
-  # y_max = y + r
-  movl    %r14d, %r10d
-  subl    %ecx, %r10d       # r10d = y_min
-  movl    %r14d, %r11d
-  addl    %ecx, %r11d       # r11d = y_max
+  movl    %edx, %r14d       # y_min = y - r
+  subl    %ecx, %r14d       # r14d = y_min
+  movl    %edx, %r15d       # y_max = y + r
+  addl    %ecx, %r15d       # r15d = y_max
 
   /* 
   if(y_min < 0) y_min = 0;
-  if(x_min < 0) x_min = 0;
+  if(x_min < 0) x_min = 0; 
   if(y_max >= img->height) y_max = img->height-1;
   if(x_max >= img->width) x_max = img->width-1;
   */ 
 
-  # clamp: y_min = max(0, y_min)
-  cmpl    $0, %r10d
-  jge     .Lskip_ymin
-  movl    $0, %r10d
-  .Lskip_ymin:
+  # restrict y_min = max(0, y_min)
+  cmpl    $0, %r14d       /* if(y_min < 0) */
+  jge     .Lcheck_xmin
+  movl    $0, %r14d        # y_min = 0
 
+.Lcheck_xmin:
   # x_min = max(0, x_min)
-  cmpl    $0, %r8d
-  jge     .Lskip_xmin
-  movl    $0, %r8d
-  .Lskip_xmin:
+  cmpl    $0, %r8d        /* if(x_min < 0) */
+  jge     .Lcheck_ymax
+  movl    $0, %r8d         # x_min = 0
 
+.Lcheck_ymax:
   # y_max = min(img->height, y_max)
-  movl    4(%rdi), %eax     # eax = img->height
-  cmpl    %eax, %r11d
-  jl      .Lskip_ymax
-  movl    %eax, %r11d
-  .Lskip_ymax:
+  movl    4(%rdi), %r11d     # r11d = img->height
+  cmpl    %r11d, %r15d        /* if(y_max >= img->height) */
+  jl      .Lcheck_xmax
+  movl    %r11d, %r15d      # y_max = img->height-1;
+  subl    $1, %r15d
 
+.Lcheck_xmax:
   # x_max = min(img->width, x_max)
-  movl    (%rdi), %eax      # eax = img->width
-  cmpl    %eax, %r9d
+  movl    (%rdi), %r11d      # eax = img->width
+  cmpl    %r11d, %r13d      /* if(x_max >= img->width) */
   jl      .Lskip_xmax
-  movl    %eax, %r9d
-  .Lskip_xmax:
+  movl    %r11d, %r13d      # x_max = img->width-1
+  subl    $1, %r13d
+.Lskip_xmax:
 
 # y loop: for (int32_t i = y_min; i <= y_max; ++i)
+  movl %r14d, %r11d         # r14d = i = y_min
 .Ly_loop:
-  cmpl    %r11d, %r10d      # i <= y_max
+  cmpl    %r11d, %r15d      # i <= y_max
   jg      .Ldone_circle
   # x loop: for (int32_t j = x_min; j <= x_max; ++j) 
-  movl    %r8d, %ecx        # ecx = j
+  movl    %r12d, %r10d        # r10 = j
 
 .Lx_loop:
-  cmpl    %r9d, %ecx        # j <= x_max
-  jg      .Ladvance_y
+  cmpl    %r10d, %r13d        # j <= x_max
+  jg      .Lnext_y
 
   /* if (!in_bounds(img, j, i)) continue; */
-  movl    %ecx, %esi        # esi = j
-  movl    %r10d, %edx       # edx = i
+  movl    %r10d, %esi        # esi = j
+  movl    %r11d, %edx       # edx = i
   call    in_bounds
-  testl   %eax, %eax
-  je      .Ladvance_x
+  cmpl    $0, %eax
+  je      .Lnext_x
 
-    # compute diff_x = center_x - j
-  movl    %r13d, %eax       # eax = center_x
-  subl    %ecx, %eax        # eax = diff_x
-  imull   %eax, %eax        # eax = diff_x^2
+  subq    $16, %rsp         # make stack pointer space for diff_x, diff_y
 
-  # compute diff_y = center_y - i
-  movl    %r14d, %edx       # edx = center_y
-  subl    %r10d, %edx       # edx = diff_y
-  imull   %edx, %edx        # edx = diff_y^2
+  #  diff_x = x - j
+  movl    %esi, %ebx       # ebx = x
+  subl    %r10d, %ebx       # ebx = diff_x = x - j
+  imull   %ebx , %ebx      # ebx  = diff_x^2
+
+  #  diff_y = y - i
+  movl    %edx, %ebp       # ebp = y
+  subl    %edx, %ebp       # ebp = diff_y = y - i
+  imull   %ebp, %ebp        # ebp = diff_y^2
 
   # total squared distance
-  addl    %edx, %eax        # eax = diff_x^2 + diff_y^2
+  addl    %ebp, %ebx        # ebx = diff_x^2 + diff_y^2
 
   # compute r^2
-  movl    %r15d, %ebx       # ebx = r
-  imull   %r15d, %ebx       # ebx = r * r
+  movl    %ecx, %ebp       # ebp = r
+  imull   %ebp, %ebp       # ebp = r * r
 
   # compare
-  cmpl    %ebx, %eax        # if (diff^2 > r^2)
-  jg      .Ladvance_x
+  cmpl    %ebx, %ebp        # if (diff^2 > r^2)
+  jg      .Lnext_x
 
   # draw_pixel(img, j, i, color)
-  movl    %ecx, %esi        # esi = j
-  movl    %r10d, %edx       # edx = i
-  movl    %r12d, %ecx       # ecx = color
+  movl    %r10d, %esi        # esi = j
+  movl    %r11d, %edx       # edx = i
+  movl    %r8d, %ecx       # ecx = color
   call    draw_pixel 
 
-.Ladvance_x:
-    incl    %ecx              # ++j
+.Lnext_x:
+    incl    %r10d              # ++j
     jmp     .Lx_loop
 
-.Ladvance_y:
-    incl    %r10d             # ++i
+.Lnext_y:
+    incl    %r11d             # ++i
     jmp     .Ly_loop
 
 .Ldone_circle:
     # Restore stack
-    addq    $32, %rsp
+    addq    $64, %rsp
+    popq    %rbp
+    popq    %rbx
+    popq    %r10
+    popq    %r11
     popq    %r15
     popq    %r14
     popq    %r13
