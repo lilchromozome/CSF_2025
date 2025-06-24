@@ -103,10 +103,9 @@ compute_index:
 
   /* index= y*width + x */
   # int32_t img_width = img -> width;
-  movl 	(%rdi), %ecx
 
   # int32_t index = y * img_width + x;
-  imull   %ecx, %edx        # edx (index) = y * width 
+  imull   (%rdi), %edx        # edx (index) = y * width 
   addl    %esi, %edx        # edx += x
 
   # return index#
@@ -172,35 +171,33 @@ get_a:
 
 .global blend_components
 blend_components:
-  pushq   %r8           # callee saved for fg
-  pushq   %r9           # callee saved for bg
-  pushq   %r10          # callee saved for a
-  pushq   %rcx
+  pushq   %r12           # callee saved for calc and 255
+  pushq   %r13           # callee saved for bg
+  pushq   %r14          # callee saved for a
   pushq   %rdx
   subq    $48, %rsp    # align stack (5+1)*8 = 48 mod 16 = 0
-  movl    %edi, %r8d     # r8d = fg
-  movl    %esi, %r9d     # r9d = bg
-  movl    %edx, %r10d    # r10d = alpha
+  movl    %edi, %r12d     # r12d = fg
+  movl    %esi, %r13d     # r13d = bg
+  movl    %edx, %r14d    # r14d = alpha
 
   # uint32_t result = (alpha * fg + (bg * (255 - alpha))) / 255#
-  movl 		$255, %eax         # ecx = 255
-  subl 		%r10d, %eax         # ecx = 255 - alpha
-  imull 	%r9d, %eax         # ecx = bg * (255 - alpha)
+  movl 		$255, %eax         # eax = 255
+  subl 		%edx, %eax         # eax = 255 - alpha
+  imull 	%esi, %eax         # eax = bg * (255 - alpha)
 
-  imull 	%r10d, %r8d         # edi = alpha * fg
-  addl 		%r8d, %eax         # ecx = alpha * fg + bg * (255 - alpha)
+  imull 	%edx, %r12d         # edi = alpha * fg
+  addl 		%r12d, %eax         # eax = alpha * fg + bg * (255 - alpha)
 
   xorl 	%edx, %edx           # clear edx for division
-  movl 	$255, %ecx         # ecx = denominator
-  divl 	%ecx               # eax = edx:eax / ecx
+  movl 	$255, %r12d         # r10d = denominator
+  divl 	%r12d               # eax = edx:eax / r10d
 
   # return (uint8_t) result#
   addq   $48, %rsp       # restor stack
   popq   %rdx         # clear all local registers
-  popq   %rcx
-  popq   %r10
-  popq   %r9
-  popq   %r8
+  popq   %r14
+  popq   %r13
+  popq   %r12
   ret
 
 /*
@@ -219,7 +216,8 @@ blend_colors:
   # save fg and bg on stack
   pushq 	%rbx              # rbx = callee saved fg
   pushq 	%r12              # r12 = callee saved bg.
-  subq    $16, %rsp
+  pushq   %rcx
+  subq    $32, %rsp
   movl 	%edi, %ebx        # ebx = fg
   movl 	%esi, %r12d 		# r12 = bg
 
@@ -301,7 +299,8 @@ blend_colors:
   shll 	$24, %r8d          # final_r << 24
   orl 	%r8d, %eax         # (final_r << 24) | (final_g << 16) | (final_b << 8) | 255
 
-  addq  $16, %rsp
+  addq  $32, %rsp
+  popq  %rcx
   popq 	%r12
   popq 	%rbx              # delete callee saved registers
   ret
@@ -309,7 +308,8 @@ blend_colors:
 /* return(bg); */
 .Lreturn_bg:
     movl 	%r12d, %eax
-    addq  $16, %rsp
+    addq  $32, %rsp
+    popq  %rcx
     popq  %r12
     popq 	%rbx # delete callee saved registers
     ret
@@ -339,7 +339,8 @@ blend_colors:
     orl     $255, %ecx    # (get_r(fg) << 24) | (get_g(fg) << 16) | (get_b(fg) << 8) | 255
     movl    %ecx, %eax    
 
-    addq  $16, %rsp
+    addq    $32, %rsp
+    popq    %rcx
     popq    %r12
     popq    %rbx          # delete callee saved registers
     ret
