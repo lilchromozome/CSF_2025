@@ -529,44 +529,47 @@ draw_circle:
   pushq   %r10           # temp var: j
   pushq   %rbx           # callee saved diff_x
   pushq   %rbp           # callee save diff_y
-  subq    $64, %rsp
+  subq    $80, %rsp
+  movl    %r8d, (%rsp)   # save color to the stack
 
 
   /* if (r < 0) return */
   cmpl    $0, %ecx
   jl      .Ldone_circle
- 
-  movl    %esi, %r12d       # x_min = x - r
-  subl    %ecx, %r12d       # r12d = x_min
-  movl    %esi, %r13d       # x_max = x + r
-  addl    %ecx, %r13d       # r13d = x_max 
+  
+  movl    %esi, %r12d       # move x to r12 to store x_min
+  cmpl    %r12d, %ecx       # if r12 > ecx, if x > r
+  jle     .Lx_min_not_zero
+  movl    $0, %r12d         # x_min = 0
+  jmp     .Lset_x_max
+.Lx_min_not_zero:
+  subl    %ecx, %r12d       # r12d = x_min = x - r
+.Lset_x_max:
+  movl    %esi, %r13d       # move x to r12 to store x_max
+  addl    %ecx, %r13d       # x_max = x + r # r13d = x_max 
 
-  movl    %edx, %r14d       # y_min = y - r
-  subl    %ecx, %r14d       # r14d = y_min
-  movl    %edx, %r15d       # y_max = y + r
-  addl    %ecx, %r15d       # r15d = y_max
+  movl    %edx, %r14d       # move y to r14 to store y_min 
+  cmpl    %r14d, %ecx       # if r14 > ecx, if y > r
+  jle     .Ly_min_not_zero
+  movl    $0, %r14d         # y_min = 0
+  jmp     .Lset_y_max
+.Ly_min_not_zero:
+  subl    %ecx, %r14d       # r14d = y_min  = y - r
+.Lset_y_max:
+  movl    %edx, %r15d       # move y to r15 to store y_max
+  addl    %ecx, %r15d       # r15d = y_max = y + r
+
 
   /* 
   if(y_min < 0) y_min = 0;
   if(x_min < 0) x_min = 0; 
   if(y_max >= img->height) y_max = img->height-1;
   if(x_max >= img->width) x_max = img->width-1;
-  */ 
-
-  # restrict y_min = max(0, y_min)
-  cmpl    $0, %r14d       /* if(y_min < 0) */
-  jge     .Lcheck_xmin
-  movl    $0, %r14d        # y_min = 0
-
-.Lcheck_xmin:
-  # x_min = max(0, x_min)
-  cmpl    $0, %r8d        /* if(x_min < 0) */
-  jge     .Lcheck_ymax
-  movl    $0, %r8d         # x_min = 0
+   */
 
 .Lcheck_ymax:
   # y_max = min(img->height, y_max)
-  movl    4(%rdi), %r11d     # r11d = img->height
+  movl    IMAGE_HEIGHT_OFFSET(%rdi), %r11d     # r11d = img->height
   cmpl    %r11d, %r15d        /* if(y_max >= img->height) */
   jl      .Lcheck_xmax
   movl    %r11d, %r15d      # y_max = img->height-1;
@@ -574,7 +577,7 @@ draw_circle:
 
 .Lcheck_xmax:
   # x_max = min(img->width, x_max)
-  movl    (%rdi), %r11d      # eax = img->width
+  movl    IMAGE_WIDTH_OFFSET(%rdi), %r11d      # eax = img->width
   cmpl    %r11d, %r13d      /* if(x_max >= img->width) */
   jl      .Lskip_xmax
   movl    %r11d, %r13d      # x_max = img->width-1
@@ -582,7 +585,7 @@ draw_circle:
 .Lskip_xmax:
 
 # y loop: for (int32_t i = y_min; i <= y_max; ++i)
-  movl %r14d, %r11d         # r14d = i = y_min
+  movl    %r14d, %r11d         # r14d = i = y_min
 .Ly_loop:
   cmpl    %r15d, %r11d      /* if i > y_max, skip */
   jg      .Ldone_circle
@@ -637,7 +640,7 @@ draw_circle:
   movl    %r10d, 16(%rsp)
   movl    %r10d, %esi        # esi = j
   movl    %r11d, %edx       # edx = i
-  movl    %r8d, %ecx       # ecx = color
+  movl    32(%rsp), %ecx       # ecx = color
   call    draw_pixel
   movl    (%rsp), %esi
   movl    4(%rsp), %edx
@@ -656,7 +659,7 @@ draw_circle:
 
 .Ldone_circle:
     # Restore stack
-    addq    $64, %rsp
+    addq    $80, %rsp
     popq    %rbp
     popq    %rbx
     popq    %r10
@@ -666,7 +669,6 @@ draw_circle:
     popq    %r13
     popq    %r12
     ret
-
 /*
  * Draw a tile by copying all pixels in the region
  * enclosed by the tile parameter in the tilemap image
