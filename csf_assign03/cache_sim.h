@@ -16,7 +16,20 @@ struct Trace {
     uint32_t address; // address of the memory access
 };
 
-// Cache class
+struct CacheLine {
+    uint32_t tag = 0;          // tag of the cache line
+    bool valid = false;           // valid bit
+    bool dirty = false;           // dirty bit for write-back cache
+    uint32_t load_time = 0;      // time of the last load operation
+    uint32_t access_time = 0;   // for LRU replacement policy
+};
+
+struct CacheSet {
+    std::vector<CacheLine> lines; // vector of cache lines in the set
+    uint32_t lru_counter = 0;      // counter for LRU replacement policy
+}
+
+// Cache configuration structure
 struct Cache {
     uint32_t num_sets;  // number of sets in the cache
     uint32_t block_num_per_set; // number of blocks per set
@@ -24,6 +37,18 @@ struct Cache {
     bool is_write_back;     
     bool is_write_allocate;
     bool is_lru;
+};
+
+// Cache simulation class
+class CacheSim {
+public:
+    CacheSim(const Cache &config);
+
+    void access_memory(const Trace &trace);
+    void print_cache() const;
+
+private:
+    Cache config;  // cache configuration
 };
 
 // function
