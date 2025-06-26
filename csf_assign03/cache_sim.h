@@ -27,7 +27,7 @@ struct CacheLine {
 struct CacheSet {
     std::vector<CacheLine> lines; // vector of cache lines in the set
     uint32_t lru_counter = 0;      // counter for LRU replacement policy
-}
+};
 
 // Cache configuration structure
 struct Cache {
