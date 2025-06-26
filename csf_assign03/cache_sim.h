@@ -13,8 +13,8 @@
 // for a singal cache line
 struct Trace {
     char type; //'1' for load, 's' for store
-    uint32_t address // address of the memory access
-}
+    uint32_t address; // address of the memory access
+};
 
 // Cache class
 struct Cache {
@@ -24,7 +24,7 @@ struct Cache {
     bool is_write_back;     
     bool is_write_allocate;
     bool is_lru;
-}
+};
 
 // function
 bool parse_arguments(int argc, char *argv[], Cache &cache);
