@@ -10,6 +10,7 @@
 #include <cstring>
 #include <algorithm>
 
+
 // for a singal cache line
 struct Trace {
     char type; //'1' for load, 's' for store
@@ -49,6 +50,15 @@ public:
 
 private:
     Cache config;  // cache configuration
+    Cache config;  // existing
+    std::vector<CacheSet> sets;  
+    uint64_t total_loads = 0;
+    uint64_t total_stores = 0;
+    uint64_t load_hits = 0;
+    uint64_t load_misses = 0;
+    uint64_t store_hits = 0;
+    uint64_t store_misses = 0;
+    uint64_t total_cycles = 0;
 };
 
 // function
