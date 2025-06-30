@@ -5,29 +5,92 @@
 #include <string>
 #include <cassert>
 
-static inline bool is_power_of_two(uint32_t x) { return x && !(x & (x - 1)); }
-
-bool parse_arguments(int argc, char *argv[], Cache &cache) {
-    if (argc != 7) return false;
-
-    cache.num_sets = std::stoul(argv[1]);           // number of sets in the cache (a positive power-of-2)
-    cache.block_num_per_set = std::stoul(argv[2]);  //number of blocks in each set (a positive power-of-2)
-    cache.block_size = std::stoul(argv[3]);         // number of bytes in each block (a positive power-of-2, at least 4)
-    std::string wa = argv[4];                       // write-through or write-back
-    std::string wb = argv[5];                       // write-allocate or no-write-allocate
-    std::string repl = argv[6];                     // lru (least-recently-used) or fifo evictions
-
-    cache.is_write_allocate = (wa == "write-allocate");
-    cache.is_write_back = (wb == "write-back");
-    cache.is_lru = (repl == "lru");
-
-    if (!is_power_of_two(cache.num_sets) || !is_power_of_two(cache.block_num_per_set)
-        || !is_power_of_two(cache.block_size) || cache.block_size < 4
-        || (!cache.is_write_allocate && cache.is_write_back)) {
-
-        std::cerr << "Invalid cache parameters\n";
-        return false;
+// Cache sim constructor
+CacheSim::CacheSim(const Cache &cfg)
+    : config(cfg)
+{
+    // resize sets
+    sets.resize(config.num_sets);
+    for (auto &s : sets) {
+        s.lines.resize(config.block_num_per_set);
+        s.lru_counter = 0;
     }
-    return true;
 }
 
+void CacheSim::access_memory(const Trace &trace) {
+    bool load = (trace.type == 'l');
+    if (load) total_loads++; else total_stores++;
+
+    auto [set_idx, tag] = parse_address(trace.address);
+    CacheSet &st = sets[set_idx];
+    bool hit = find_cache_line(st, tag);
+
+    if (load)
+        handle_load(st, tag, hit);
+    else
+        handle_store(st, tag, hit);
+}
+
+std::pair<uint32_t, uint32_t> CacheSim::parse_address(uint32_t addr) {
+    uint32_t boffs = __builtin_ctz(config.block_size);
+    uint32_t soffs = __builtin_ctz(config.num_sets);
+    uint32_t set_idx = (addr >> boffs) & ((1u << soffs) - 1);
+    uint32_t tag = addr >> (boffs + soffs);
+    return {set_idx, tag};
+}
+
+bool CacheSim::find_cache_line(CacheSet &st, uint32_t tag) {
+    for (auto &line : st.lines) {
+        if (line.valid && line.tag == tag) {
+            if (config.is_lru) line.access_time = st.lru_counter++;
+            return true;
+        }
+    }
+    return false;
+}
+
+CacheLine* CacheSim::evict_line(CacheSet &st) {
+    for (auto &ln : st.lines)
+        if (!ln.valid) return &ln;
+
+    CacheLine *ev = &*std::min_element(st.lines.begin(), st.lines.end(),
+        [](auto &a, auto &b){ return a.access_time < b.access_time; });
+
+    if (ev->dirty && config.is_write_back)
+        total_cycles += (config.block_size / 4) * 100;
+
+    return ev;
+}
+
+void CacheSim::handle_load(CacheSet &st, uint32_t tag, bool hit) {
+    if (hit) {
+        load_hits++; total_cycles++;
+    } else {
+        load_misses++;
+        total_cycles += 1 + (config.block_size / 4) * 100;
+        CacheLine *ev = evict_line(st);
+        *ev = {tag, true, false, 0, st.lru_counter++};
+    }
+}
+
+void CacheSim::handle_store(CacheSet &st, uint32_t tag, bool hit) {
+    if (hit) {
+        store_hits++; total_cycles++;
+        for (auto &ln : st.lines)
+            if (ln.valid && ln.tag == tag) {
+                if (config.is_write_back) ln.dirty = true;
+                else total_cycles += 100;
+                break;
+            }
+    } else {
+        store_misses++;
+        if (config.is_write_allocate) {
+            total_cycles += 1 + (config.block_size / 4) * 100;
+            CacheLine *ev = evict_line(st);
+            *ev = {tag, true, config.is_write_back, 0, st.lru_counter++};
+            if (!config.is_write_back) total_cycles += 100;
+        } else {
+            total_cycles += 100;
+        }
+    }
+}

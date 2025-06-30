@@ -48,9 +48,16 @@ public:
     void access_memory(const Trace &trace);
     void print_cache() const;
 
+    //helper fxns
+    std::pair<uint32_t, uint32_t> parse_address(uint32_t addr);
+    CacheLine* evict_line(CacheSet &st);
+    bool find_cache_line(CacheSet &st, uint32_t tag);
+    void handle_load(CacheSet &st, uint32_t tag, bool hit);
+    void handle_store(CacheSet &st, uint32_t tag, bool hit);
+
+
 private:
     Cache config;  // cache configuration
-    Cache config;  // existing
     std::vector<CacheSet> sets;  
     uint64_t total_loads = 0;
     uint64_t total_stores = 0;
