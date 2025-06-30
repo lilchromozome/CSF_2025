@@ -11,7 +11,7 @@
 #include <algorithm>
 
 
-// for a singal cache line
+// for a single cache line
 struct Trace {
     char type; //'1' for load, 's' for store
     uint32_t address; // address of the memory access
@@ -32,12 +32,12 @@ struct CacheSet {
 
 // Cache configuration structure
 struct Cache {
-    uint32_t num_sets;  // number of sets in the cache
-    uint32_t block_num_per_set; // number of blocks per set
-    uint32_t block_size;    // size of each block in bytes
-    bool is_write_back;     
-    bool is_write_allocate;
-    bool is_lru;
+    uint32_t num_sets;          // number of sets in the cache (a positive power-of-2)
+    uint32_t block_num_per_set; // number of blocks in each set (a positive power-of-2)
+    uint32_t block_size;        // number of bytes in each block (a positive power-of-2, at least 4)
+    bool is_write_allocate;     // write-allocate or no-write-allocate
+    bool is_write_back;         // write-through or write-back
+    bool is_lru;                // lru (least-recently-used) or fifo evictions
 };
 
 // Cache simulation class
@@ -50,7 +50,7 @@ public:
 
     //helper fxns
     std::pair<uint32_t, uint32_t> parse_address(uint32_t addr);
-    CacheLine* evict_line(CacheSet &st);
+    CacheLine* remove_line(CacheSet &st);                   //lazy
     bool find_cache_line(CacheSet &st, uint32_t tag);
     void handle_load(CacheSet &st, uint32_t tag, bool hit);
     void handle_store(CacheSet &st, uint32_t tag, bool hit);
@@ -59,6 +59,9 @@ public:
 private:
     Cache config;  // cache configuration
     std::vector<CacheSet> sets;  
+    
+    // Your cache simulator should assume that loads/stores from/to the cache take one processor cycle; 
+    // loads/stores from/to memory take 100 processor cycles for each 4-byte quantity that is transferred. 
     uint64_t total_loads = 0;
     uint64_t total_stores = 0;
     uint64_t load_hits = 0;

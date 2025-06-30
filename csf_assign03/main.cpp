@@ -1,5 +1,4 @@
 #include "cache_sim.h"
-#include <fstream>
 
 static inline bool is_power_of_two(uint32_t x) { return x && !(x & (x - 1)); }
 
@@ -27,20 +26,13 @@ bool parse_arguments(int argc, char *argv[], Cache &cache) {
     return true;
 }
 
-bool read_trace_file(const std::string &input, std::vector<Trace> &traces) {
-    std::ifstream file(input);
 
-    if (!file) return false;
-
+bool read_trace_file(std::istream &input, std::vector<Trace> &traces) {
     char type;
     std::string addr_str;
     uint32_t sz;
 
-    if(type != 'l' || type != 's'){ 
-        throw std::invalid_argument("Trace type is not \'l\' or \'s\'");
-    }
-
-    while (file >> type >> addr_str >> sz) {
+    while (input >> type >> addr_str >> sz) {
         Trace t{type, static_cast<uint32_t>(std::stoul(addr_str, nullptr, 16))};
         traces.push_back(t);
     }
@@ -49,8 +41,20 @@ bool read_trace_file(const std::string &input, std::vector<Trace> &traces) {
 
 int main(int argc, char *argv[]) {
     Cache cache;
-    if(parse_arguments(argc, argv, cache)){
-        return 0;
+    if (!parse_arguments(argc, argv, cache)) {
+        std::cerr << "Incorrect input format " << std::endl;
+        return 1;
     }
-    return 1;
+
+    std::vector<Trace> traces;
+    if (!read_trace_file(std::cin, traces)) {
+        std::cerr << "Error in trace file" << std::endl;
+        return 1;
+    }
+
+    CacheSim sim(cache);
+    for (const auto &t : traces) sim.access_memory(t);
+    sim.print_cache();
+
+    return 0;
 }
