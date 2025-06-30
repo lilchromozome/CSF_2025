@@ -1,0 +1,1 @@
+Running ./csim 128 32 64 write-allocate write-through lru < traces/write01.trace

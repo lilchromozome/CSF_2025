@@ -1,0 +1,1 @@
+Running ./csim 1024 1 128 write-allocate write-through lru < traces/read03.trace
