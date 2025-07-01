@@ -5,7 +5,13 @@
 #include <string>
 #include <cassert>
 
-// Cache sim constructor
+
+/**
+    * constructs a CacheSim object with the provided confguration.
+    * 
+    * Parameters:
+    *   config - a Cache object containing the cache configuration parameters.
+ */
 CacheSim::CacheSim(const Cache &config)
     : config(config)
 {
@@ -17,6 +23,12 @@ CacheSim::CacheSim(const Cache &config)
     }
 }
 
+/*
+    * access a memory address based on the trace.
+    *
+    * Parameters:
+    *   trace - a Trace object containing the memory address and type (load/store).
+*/
 void CacheSim::access_memory(const Trace &trace) {
     bool load = (trace.type == 'l');
     if (load) total_loads++; else total_stores++;
@@ -31,6 +43,15 @@ void CacheSim::access_memory(const Trace &trace) {
         handle_store(cache_set, tag, hit);
 }
 
+/*
+    * Parse the memory address to get the set index and tag.
+    *
+    * Parameters:
+    *   addr - the memory address (32 bits).
+    *
+    * Returns:
+    *   A pair containing the set index and tag.
+*/
 std::pair<uint32_t, uint32_t> CacheSim::parse_address(uint32_t addr) {
     uint32_t block_offsets = __builtin_ctz(config.block_size);                  // set/block is pow 2
     uint32_t set_offsets = __builtin_ctz(config.num_sets);
@@ -39,6 +60,16 @@ std::pair<uint32_t, uint32_t> CacheSim::parse_address(uint32_t addr) {
     return {set_idx, tag};
 }
 
+/*
+    * Find the cache line in the specified tag within the set.
+    *
+    * Parameters:
+    *   cache_set - the CacheSet to search in.
+    *   tag - the tag to search for.
+    *
+    * Returns:
+    *   true if the line is found (hit), false otherwise.
+*/
 bool CacheSim::find_cache_line(CacheSet &cache_set, uint32_t tag) {
     for (auto &line : cache_set.lines) {
         if (line.valid && line.tag == tag) {
@@ -51,6 +82,15 @@ bool CacheSim::find_cache_line(CacheSet &cache_set, uint32_t tag) {
     return false;
 }
 
+/*
+    * Remove a cache line from the set.
+    *
+    * Parameters:
+    *   cache_set - the CacheSet from which to remove the line.
+    *
+    * Returns:
+    *   pointer to the removed CacheLine.
+*/
 CacheLine* CacheSim::remove_line(CacheSet &cache_set) {
     for (auto &ln : cache_set.lines)
         if (!ln.valid) return &ln;
@@ -65,7 +105,12 @@ CacheLine* CacheSim::remove_line(CacheSet &cache_set) {
 }
 
 /*
-Read
+    * Handle a memory load request, and update the statistics and Cache contents
+    *
+    * Parameters:
+    *   cache_set - set need to be accessed
+    *   tag - tag of the memory address
+    *   hit - whether the load was a hit or miss
 */
 void CacheSim::handle_load(CacheSet &cache_set, uint32_t tag, bool hit) {
     if (hit) {
@@ -79,7 +124,12 @@ void CacheSim::handle_load(CacheSet &cache_set, uint32_t tag, bool hit) {
 }
 
 /*
-Write
+    * Handle a memory store request, and update the statistics and Cache contents
+    *
+    * Parameters:
+    *   cache_set - set need to be accessed
+    *   tag - tag of the memory address
+    *   hit - whether the store was a hit or miss
 */
 void CacheSim::handle_store(CacheSet &cache_set, uint32_t tag, bool hit) {
     if (hit) {
@@ -103,6 +153,9 @@ void CacheSim::handle_store(CacheSet &cache_set, uint32_t tag, bool hit) {
     }
 }
 
+/*
+    * Print the cache statistics.
+*/
 void CacheSim::print_cache() const{
     std::cout << "Total loads: " << total_loads << std::endl;
     std::cout << "Total stores: " << total_stores << std::endl;
