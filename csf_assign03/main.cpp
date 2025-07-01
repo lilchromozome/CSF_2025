@@ -2,6 +2,17 @@
 
 static inline bool is_power_of_two(uint32_t x) { return x && !(x & (x - 1)); }
 
+/*
+    * Parese and validate command line arguements to populate the cache settings
+    *
+    * Parameters:
+    *   argc - number of command line arguments
+    *   argv - arugument values
+    *   cache - a Cache object to be populated with the parsed values
+    *
+    * Returns:
+    *   true if the arguments are valid and parsed successfully, false otherwise.
+*/
 bool parse_arguments(int argc, char *argv[], Cache &cache) {
     if (argc != 7) return false;
 
@@ -27,6 +38,16 @@ bool parse_arguments(int argc, char *argv[], Cache &cache) {
 }
 
 
+/*
+    *Read trace data from the input stream and populate the traces vector.
+    *
+    * Parameters:
+    *   input - input stream containing the trace data
+    *   traces - vector to be populated with Trace objects
+    *
+    * Returns:
+    *   true if the trace file is read successfully, false otherwise.
+*/
 bool read_trace_file(std::istream &input, std::vector<Trace> &traces) {
     char type;
     std::string addr_str;
