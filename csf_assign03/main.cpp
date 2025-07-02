@@ -25,7 +25,12 @@ bool parse_arguments(int argc, char *argv[], Cache &cache) {
 
     cache.is_write_allocate = (wa == "write-allocate");
     cache.is_write_back = (wb == "write-back");
-    cache.is_lru = (repl == "lru");
+    cache.is_lru  = (repl == "lru");
+    cache.is_fifo = (repl == "fifo");
+    if (!(cache.is_lru ^ cache.is_fifo)) {
+         return false;
+    }
+
 
     if (!is_power_of_two(cache.num_sets) || !is_power_of_two(cache.block_num_per_set)
         || !is_power_of_two(cache.block_size) || cache.block_size < 4

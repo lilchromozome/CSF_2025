@@ -20,6 +20,7 @@ CacheSim::CacheSim(const Cache &config)
     for (auto &s : sets) {
         s.lines.resize(config.block_num_per_set);
         s.lru_counter = 0;
+        s.first_in = 0;
     }
 }
 
@@ -83,7 +84,9 @@ bool CacheSim::find_cache_line(CacheSet &cache_set, uint32_t tag) {
 }
 
 /*
-    * Remove a cache line from the set.
+    * Remove a cache line from the set. 
+    * If FIFO, return the first-in. (1st = index 0)
+    * If LRU, return line with highest counter since last used
     *
     * Parameters:
     *   cache_set - the CacheSet from which to remove the line.
@@ -94,10 +97,16 @@ bool CacheSim::find_cache_line(CacheSet &cache_set, uint32_t tag) {
 CacheLine* CacheSim::remove_line(CacheSet &cache_set) {
     for (auto &ln : cache_set.lines)
         if (!ln.valid) return &ln;
+    CacheLine *remove_me = nullptr;
 
-    CacheLine *remove_me = &*std::min_element(cache_set.lines.begin(), cache_set.lines.end(),
+    if(config.is_fifo){
+        remove_me = &cache_set.lines[ cache_set.first_in ];
+        cache_set.first_in = (cache_set.first_in + 1) % cache_set.lines.size();
+    } else{
+        remove_me = &*std::min_element(cache_set.lines.begin(), cache_set.lines.end(),
         [](auto &a, auto &b){ return a.access_time < b.access_time; });
-
+    }
+    
     if (remove_me->dirty && config.is_write_back)
         total_cycles += (config.block_size / 4) * 100;
 

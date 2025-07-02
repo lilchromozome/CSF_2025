@@ -28,6 +28,7 @@ struct CacheLine {
 struct CacheSet {
     std::vector<CacheLine> lines; 
     uint32_t lru_counter = 0;      // counter for LRU replacement 
+    uint32_t first_in;              // FIFO index
 };
 
 // Cache configuration structure
@@ -38,6 +39,7 @@ struct Cache {
     bool is_write_allocate;     // write-allocate or no-write-allocate
     bool is_write_back;         // write-through or write-back
     bool is_lru;                // lru (least-recently-used) or fifo evictions
+    bool is_fifo;
 };
 
 // Cache simulation class
