@@ -10,6 +10,8 @@ write_allocs = ["write-allocate", "no-write-allocate"]
 write_policies = ["write-back", "write-through"]
 replacements = ["fifo", "lru"]
 
+current = 0
+
 # Output CSV file
 with open("cache_sim_results.csv", "w", newline="") as csvfile:
     writer = csv.writer(csvfile)
@@ -21,17 +23,17 @@ with open("cache_sim_results.csv", "w", newline="") as csvfile:
     
     # Counter for progress monitoring
     total_combinations = len(num_sets) * len(block_num_per_set) * len(block_size) * 8  # 8 policy combinations
-    current = 0
     
     # Iterate through all combinations
     for n_sets, bin_set, b_size, walloc, wpolicy, repl in product(
         num_sets, block_num_per_set, block_size, write_allocs, write_policies, replacements
     ):
+        current += 1
         # Skip invalid combinations
         if n_sets < bin_set * b_size or n_sets % (bin_set * b_size) != 0:
             continue
             
-        current += 1
+        
         print(f"Running {current}/{total_combinations}: {n_sets},{bin_set},{b_size},{walloc},{wpolicy},{repl}")
         
         # Build command
