@@ -26,3 +26,6 @@ depend.mak :
 	touch $@
 
 include depend.mak
+
+test: test.cpp cache_sim.cpp
+	$(CXX) $(CXXFLAGS) test.cpp cache_sim.cpp -o test

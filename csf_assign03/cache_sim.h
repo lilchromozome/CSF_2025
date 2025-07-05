@@ -50,6 +50,14 @@ public:
     void access_memory(const Trace &trace);
     void print_cache() const;
 
+    // test
+    uint64_t get_total_loads() const { return total_loads; }
+    uint64_t get_load_misses() const { return load_misses; }
+    uint64_t get_total_stores() const { return total_stores; }
+    uint64_t get_store_misses() const { return store_misses; }
+    uint64_t get_total_cycles() const { return total_cycles; }
+
+
     //helper fxns
     std::pair<uint32_t, uint32_t> parse_address(uint32_t addr);
     CacheLine* remove_line(CacheSet &st);                   //lazy
