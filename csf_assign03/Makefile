@@ -13,7 +13,7 @@ csim : $(CXX_OBJS)
 .PHONY: solution.zip
 solution.zip :
 	rm -f $@
-	zip -9r $@ *.c *.cpp *.h README Makefile
+	zip -9r $@ *.c *.cpp *.h README.txt Makefile
 
 clean :
 	rm -f csim *.o
