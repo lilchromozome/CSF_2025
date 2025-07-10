@@ -167,9 +167,6 @@ int main(int argc, char **argv) {
     fatal("fstat() failed");
   }
   size_t file_size_in_bytes = statbuf.st_size;
-  if (file_size_in_bytes % sizeof(int64_t) != 0){}
-    // handle filesize error, cannot be split into 8 byte chunks
-    fatal("file size is not multiple of 8 bytes");
   size_t num_elements = file_size_in_bytes / sizeof(int64_t);
 
   // TODO: map the file into memory using mmap
