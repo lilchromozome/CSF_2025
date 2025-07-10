@@ -107,17 +107,58 @@ int main(int argc, char **argv) {
   size_t threshold = (size_t) strtoul(argv[2], &end, 10);
   if (end != argv[2] + strlen(argv[2])) {
     // TODO: report an error (threshold value is invalid)
+    fprintf(stderr, "Error: threshold value is invalid");
   }
 
   // TODO: open the file
+  int fd = open(filename, O_RDWR);
+  if (fd < 0) {
+    // file couldn't be opened: handle error and exit
+    fprintf(stderr, "Error: failure to open the file with the integers to be sorted");
+    return 1;
+  }
 
   // TODO: use fstat to determine the size of the file
+  struct stat statbuf;
+  int rc = fstat(fd, &statbuf);
+  if (rc != 0) {
+    // handle fstat error and exit
+    fprintf(stderr, "Error: fstat() failed");
+    return 1;
+  }
+  size_t file_size_in_bytes = statbuf.st_size;
+  if (file_size_in_bytes % sizeof(int64_t) != 0){}
+    // handle filesize error, cannot be split into 8 byte chunks
+    fprintf(stderr, "Error: file size is not multiple of 8 bytes");
+    return 1;
+  size_t num_elements = file_size_in_bytes / sizeof(int64_t);
 
   // TODO: map the file into memory using mmap
+  int64_t *data = mmap(NULL, file_size_in_bytes, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+  // you should immediately close the file descriptor here since mmap maintains a separate
+  // reference to the file and all open fds will gets duplicated to the children, which will
+  // cause fd in-use-at-exit leaks.
+  // TODO: call close()
+  if (data == MAP_FAILED) {
+      // handle mmap error and exit
+      fprintf(stderr, "Error: failure to mmap the file data");
+      return 1;
+  }
+  close(fd);
+  // *data now behaves like a standard array of int64_t. Be careful though! Going off the end
+  // of the array will silently extend the file, which can rapidly lead to disk space
+  // depletion!
 
   // TODO: sort the data!
+  merge_sort(data, 0, num_elements, threshold);
 
   // TODO: unmap and close the file
-
+  if (munmap(data, file_size_in_bytes) != 0){
+    fprintf(stderr, "Error: failure of the “top-level” process to munmap the file data and close the file");
+    return 1;
+  }
+    
   // TODO: exit with a 0 exit code if sort was successful
+  return 0;
+
 }
