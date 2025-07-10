@@ -70,9 +70,51 @@ void merge_sort(int64_t *arr, size_t begin, size_t end, size_t threshold) {
 
   size_t mid = begin + size/2;
 
-  // TODO: parallelize the recursive sorting
-  merge_sort(arr, begin, mid, threshold);
-  merge_sort(arr, mid, end, threshold);
+  // // TODO: parallelize the recursive sorting
+  // merge_sort(arr, begin, mid, threshold);
+  // merge_sort(arr, mid, end, threshold);
+
+
+  // spawn left
+  pid_t left = fork();
+  if (left < 0) {
+    // fork failed to start a new process
+    // handle the error and exit
+    fatal("fork() failed");
+  }
+  if (left == 0) {
+      merge_sort(arr, begin, mid, threshold);
+      // if merge_sort returns, assume it was successful
+      exit(0);
+      // everything past here is now unreachable in the child
+  }
+  // if pid is not 0, we are in the parent process
+
+  // spawn right
+  pid_t right = fork();
+  if (right < 0) {
+    // fork failed to start a new process
+    // handle the error and exit
+    fatal("fork() failed");
+  }
+  if (right == 0) {
+      merge_sort(arr, mid, end, threshold);
+      // if merge_sort returns, assume it was successful
+      exit(0);
+      // everything past here is now unreachable in the child
+  }
+  // if pid is not 0, we are in the parent process
+
+  // pause for both children
+  int wstatus;
+  // blocks until the process indentified by pid_to_wait_for completes
+  pid_t actual_left_pid = waitpid(left,  &wstatus, 0);
+  pid_t actual_right_pid = waitpid(right,  &wstatus, 0);
+  if (actual_left_pid == -1 || !WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0)
+      fatal("left child failed");
+  if (actual_right_pid == -1 || !WIFEXITED(wstatus) || WEXITSTATUS(wstatus) != 0)
+      fatal("right child failed");
+
 
   // allocate temp array now, so we can avoid unnecessary work
   // if the malloc fails
@@ -107,15 +149,14 @@ int main(int argc, char **argv) {
   size_t threshold = (size_t) strtoul(argv[2], &end, 10);
   if (end != argv[2] + strlen(argv[2])) {
     // TODO: report an error (threshold value is invalid)
-    fprintf(stderr, "Error: threshold value is invalid");
+    fatal("threshold value is invalid");
   }
 
   // TODO: open the file
   int fd = open(filename, O_RDWR);
   if (fd < 0) {
     // file couldn't be opened: handle error and exit
-    fprintf(stderr, "Error: failure to open the file with the integers to be sorted");
-    return 1;
+    fatal("failure to open the file with the integers to be sorted");
   }
 
   // TODO: use fstat to determine the size of the file
@@ -123,14 +164,12 @@ int main(int argc, char **argv) {
   int rc = fstat(fd, &statbuf);
   if (rc != 0) {
     // handle fstat error and exit
-    fprintf(stderr, "Error: fstat() failed");
-    return 1;
+    fatal("fstat() failed");
   }
   size_t file_size_in_bytes = statbuf.st_size;
   if (file_size_in_bytes % sizeof(int64_t) != 0){}
     // handle filesize error, cannot be split into 8 byte chunks
-    fprintf(stderr, "Error: file size is not multiple of 8 bytes");
-    return 1;
+    fatal("file size is not multiple of 8 bytes");
   size_t num_elements = file_size_in_bytes / sizeof(int64_t);
 
   // TODO: map the file into memory using mmap
@@ -141,8 +180,7 @@ int main(int argc, char **argv) {
   // TODO: call close()
   if (data == MAP_FAILED) {
       // handle mmap error and exit
-      fprintf(stderr, "Error: failure to mmap the file data");
-      return 1;
+      fatal("failure to mmap the file data");
   }
   close(fd);
   // *data now behaves like a standard array of int64_t. Be careful though! Going off the end
@@ -154,8 +192,7 @@ int main(int argc, char **argv) {
 
   // TODO: unmap and close the file
   if (munmap(data, file_size_in_bytes) != 0){
-    fprintf(stderr, "Error: failure of the “top-level” process to munmap the file data and close the file");
-    return 1;
+    fatal("failure of the “top-level” process to munmap the file data and close the file");
   }
     
   // TODO: exit with a 0 exit code if sort was successful
