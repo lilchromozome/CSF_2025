@@ -3,12 +3,24 @@ CONTRIBUTIONS
 TODO: write a brief summary of how each team member contributed to
 the project.
 
+Will:
+Sorting algorithm
+Input handling
+Error handling
+
+Sichen:
+Sorting algorithm
+Analysis
+
 REPORT
 
 TODO: add your report according to the instructions in the
 "Experiments and analysis" section of the assignment description.
 
 REPORT:
+Our sorting algorithm seems to work up to a limit of 100000000 input values ~100MB. However due to this alrge file size and long write and sort time, we decided to leave our code to not optimize for this. 
+We hypothesize this could be due to a memory limit of simultaneous process runs with so many forks.
+
 We test our code on a 16MB binary file of randomly generated 64-bit integers.
 The program has been ran by using different threshold values and recorded the real time that taken to sort the data.
 These experimentes were run on ugrad5 machine. The results are as follows:
