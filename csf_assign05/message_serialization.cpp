@@ -137,13 +137,13 @@ void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg
 
   if (tokens.empty())
   {
-    throw SerializationException("Empty message received");
+    throw InvalidMessage("Empty message received");
   }
 
   auto it = type_map.find(tokens[0]);
   if (it == type_map.end())
   {
-    throw SerializationException("Unknown message type: " + tokens[0]);
+    throw InvalidMessage("Unknown message type: " + tokens[0]);
   }
   msg.set_message_type(it->second);
   for (size_t i = 1; i < tokens.size(); ++i)

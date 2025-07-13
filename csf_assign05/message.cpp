@@ -76,7 +76,7 @@ std::string Message::get_key() const
 std::string Message::get_value() const
 {
   // TODO: implement
-  if ((m_message_type == MessageType::PUSH || m_message_type == MessageType::DATA) && m_args == 1){
+  if ((m_message_type == MessageType::PUSH || m_message_type == MessageType::DATA) && m_args.size() == 1){
     return m_args[0];
   }
   return "";
@@ -85,7 +85,7 @@ std::string Message::get_value() const
 std::string Message::get_quoted_text() const
 {
   // TODO: implement
-  if ((m_message_type == MessageType::FAILED || m_message_type == MessageType::ERROR) && m_args == 1){
+  if ((m_message_type == MessageType::FAILED || m_message_type == MessageType::ERROR) && m_args.size() == 1){
     return m_args[0];
   }
   return "";
