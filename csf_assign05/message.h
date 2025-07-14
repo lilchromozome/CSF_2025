@@ -35,6 +35,7 @@ class Message {
 private:
   MessageType m_message_type;
   std::vector<std::string> m_args;
+  static bool is_valid_identifier(const std::string &identifier);
 
 public:
   // Maximum encoded message length (including terminator newline character)

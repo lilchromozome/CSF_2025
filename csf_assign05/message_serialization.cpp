@@ -74,7 +74,7 @@ void MessageSerialization::encode( const Message &msg, std::string &encoded_msg 
   for (unsigned i = 0; i < msg.get_num_args(); ++i) {
     oss << ' ';
     std::string arg = msg.get_arg(i);
-    if((type == MessageType::FAILED || type == MessageType::ERROR || type == MessageType::DATA) && i == 0){
+    if((type == MessageType::FAILED || type == MessageType::ERROR) && i == 0){
       oss << "\"" << arg << "\"";
     } else {
       oss << arg;
@@ -82,11 +82,19 @@ void MessageSerialization::encode( const Message &msg, std::string &encoded_msg 
   }
   oss << "\n";
   encoded_msg = oss.str();
+
+  if (encoded_msg.size() > Message::MAX_ENCODED_LEN) {
+    throw InvalidMessage("Encoded message exceeds maximum size");
+  }
 }
 
 void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg )
 {
   // TODO: implement
+  if (encoded_msg_.empty() || encoded_msg_.back() != '\n') {
+    throw InvalidMessage("Message didn't end with a newline");
+  }
+
   std::string encoded_msg = encoded_msg_;
   if (!encoded_msg.empty() && encoded_msg.back() == '\n') {
     encoded_msg.pop_back(); // Remove trailing newline

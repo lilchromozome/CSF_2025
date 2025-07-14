@@ -96,6 +96,22 @@ void Message::push_arg( const std::string &arg )
   m_args.push_back( arg );
 }
 
+// helper function to check if a string is a valid identifier
+bool Message::is_valid_identifier(const std::string &identifier){
+  if (identifier.empty()) {
+    return false;
+  }
+  if (!std::isalpha(identifier[0]) && identifier[0] != '_') {
+    return false;
+  }
+  for (size_t i = 1; i < identifier.size(); ++i) {
+    if (!std::isalnum(identifier[i]) && identifier[i] != '_') {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool Message::is_valid() const
 {
   // TODO: implement
@@ -103,16 +119,18 @@ bool Message::is_valid() const
     // 1 args
     case MessageType::LOGIN:
     case MessageType::PUSH:
-    case MessageType::CREATE:
     case MessageType::FAILED:
     case MessageType::ERROR:
     case MessageType::DATA:
-      return m_args.size()==1;
+      return m_args.size()== 1;
+
+    case MessageType::CREATE:
+      return m_args.size() == 1 && is_valid_identifier(m_args[0]);
 
     // 2 args
     case MessageType::SET:
     case MessageType::GET:
-      return m_args.size() == 2;
+      return m_args.size() == 2 && is_valid_identifier(m_args[0]) && is_valid_identifier(m_args[1]);    
 
     // 0 args
     case MessageType::POP:
@@ -126,6 +144,9 @@ bool Message::is_valid() const
     case MessageType::BYE:
     case MessageType::OK:
       return m_args.empty();
+
+    case MessageType::NONE:
+    default:
+      return false;
   }
-  return false;
 }
