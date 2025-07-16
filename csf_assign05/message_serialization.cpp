@@ -91,7 +91,11 @@ void MessageSerialization::encode( const Message &msg, std::string &encoded_msg 
 void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg )
 {
   // TODO: implement
-  if (encoded_msg_.empty() || encoded_msg_.back() != '\n') {
+  if (encoded_msg_.empty()) {
+    throw InvalidMessage("Empty message received");
+  }
+  
+  if (encoded_msg_.back() != '\n') {
     throw InvalidMessage("Message didn't end with a newline");
   }
 
@@ -105,7 +109,7 @@ void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg
 
   // if token starts with "", it is a quoted string
   while (iss >> token) {
-    if (token[0] == '"') {
+    if (token.front() == '"') {
       // Handle quoted strings
       std::string quoted_token = token;
       while (!quoted_token.empty() && quoted_token.back() != '"') {
@@ -115,7 +119,11 @@ void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg
         }
         quoted_token += ' ' + next_token;
       }
+      if (quoted_token.size() >= 2 && quoted_token.back() == '"')
+      {
+        // Remove surrounding quotes
       quoted_token = quoted_token.substr(1, quoted_token.size() - 2); // Remove quotes
+      }
       tokens.push_back(quoted_token);
     } else {
       tokens.push_back(token);
@@ -153,6 +161,7 @@ void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg
   {
     throw InvalidMessage("Unknown message type: " + tokens[0]);
   }
+  msg = Message(); // Reset message
   msg.set_message_type(it->second);
   for (size_t i = 1; i < tokens.size(); ++i)
   {
