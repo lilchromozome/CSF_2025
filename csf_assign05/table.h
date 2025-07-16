@@ -9,10 +9,12 @@ class Table {
 private:
   std::string m_name;
   // TODO: add member variables
-
+  pthread_mutex_t m_lock;
+  std::map<std::string, std::string> m_data; // Key-value pairs
+  std::map<std::string, std::string> m_temp_data; // Temporary changes
   // copy constructor and assignment operator are prohibited
-  Table( const Table & );
-  Table &operator=( const Table & );
+  Table( const Table & ) = delete;
+  Table &operator=( const Table & ) = delete;
 
 public:
   Table( const std::string &name );
