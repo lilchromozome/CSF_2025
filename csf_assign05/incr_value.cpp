@@ -57,6 +57,7 @@ int main(int argc, char **argv) {
   }
   Rio_readinitb(&in, clientfd);
 
+  //Login
   handle_message(Message(MessageType::LOGIN, {username}), clientfd, in, encoded_msg, msg);
 
   if (use_transaction) handle_message(Message(MessageType::BEGIN), clientfd, in, encoded_msg, msg);
