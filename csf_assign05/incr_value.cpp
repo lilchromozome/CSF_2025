@@ -62,12 +62,16 @@ int main(int argc, char **argv) {
 
   if (use_transaction) handle_message(Message(MessageType::BEGIN), clientfd, in, encoded_msg, msg);
 
+  //Get
+  //Push +1
+  //Add 
+  //Set
   handle_message(Message(MessageType::GET, {table, key}), clientfd, in, encoded_msg, msg);  
   handle_message(Message(MessageType::PUSH, {"1"}), clientfd, in, encoded_msg, msg);    
   handle_message(Message(MessageType::ADD), clientfd, in, encoded_msg, msg);       
   handle_message(Message(MessageType::SET, {table, key}), clientfd, in, encoded_msg, msg);
 
-  if (use_transaction) handle_message(Message(MessageType::COMMIT, {table, key}), clientfd, in, encoded_msg, msg);
+  if (use_transaction) handle_message(Message(MessageType::COMMIT), clientfd, in, encoded_msg, msg);
 
   //Bye
   {
