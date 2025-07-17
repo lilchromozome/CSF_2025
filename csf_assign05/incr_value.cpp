@@ -7,6 +7,20 @@
 #include "message_serialization.h" 
 #include "exceptions.h"   
 
+// helper fxn to accept input
+void handle_message(const Message &m, int clientfd, rio_t in, std::string encoded_msg, Message msg ) {
+    MessageSerialization::encode(m, encoded_msg);
+    Rio_writen(clientfd, encoded_msg.c_str(), encoded_msg.size());
+    char buf[Message::MAX_ENCODED_LEN];                   
+    Rio_readlineb(&in, buf, sizeof(buf));
+    MessageSerialization::decode(buf, msg);
+    if (msg.get_message_type() != MessageType::OK) {
+        std::cerr << "Error: " << msg.get_quoted_text() << "\n";
+        close(clientfd);
+        std::exit(1);
+    }
+};
+
 int main(int argc, char **argv) {
   if ( argc != 6 && (argc != 7 || std::string(argv[1]) != "-t") ) {
     std::cerr << "Usage: ./incr_value [-t] <hostname> <port> <username> <table> <key>\n";
@@ -43,5 +57,23 @@ int main(int argc, char **argv) {
   }
   Rio_readinitb(&in, clientfd);
 
-  
+  handle_message(Message(MessageType::LOGIN, {username}), clientfd, in, encoded_msg, msg);
+
+  if (use_transaction) handle_message(Message(MessageType::BEGIN), clientfd, in, encoded_msg, msg);
+
+  handle_message(Message(MessageType::GET, {table, key}), clientfd, in, encoded_msg, msg);  
+  handle_message(Message(MessageType::PUSH, {"1"}), clientfd, in, encoded_msg, msg);    
+  handle_message(Message(MessageType::ADD), clientfd, in, encoded_msg, msg);       
+  handle_message(Message(MessageType::SET, {table, key}), clientfd, in, encoded_msg, msg);
+
+  if (use_transaction) handle_message(Message(MessageType::COMMIT, {table, key}), clientfd, in, encoded_msg, msg);
+
+  //Bye
+  {
+    Message m(MessageType::BYE);
+    MessageSerialization::encode(m, encoded_msg);
+    Rio_writen(clientfd, encoded_msg.c_str(), encoded_msg.size());
+  }
+  close(clientfd);
+  return 0; 
 }
