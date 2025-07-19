@@ -101,9 +101,13 @@ bool Message::is_valid_identifier(const std::string &identifier){
   if (identifier.empty()) {
     return false;
   }
+
+  // An identifier must start with letter or _
   if (!std::isalpha(identifier[0]) && identifier[0] != '_') {
     return false;
   }
+
+  // All the parts of the identifier must be alphanumeric or _
   for (size_t i = 1; i < identifier.size(); ++i) {
     if (!std::isalnum(identifier[i]) && identifier[i] != '_') {
       return false;

@@ -70,10 +70,11 @@ void MessageSerialization::encode( const Message &msg, std::string &encoded_msg 
       encoded_msg = "";
       return;
   }
-
+  // switch arguments into string
   for (unsigned i = 0; i < msg.get_num_args(); ++i) {
     oss << ' ';
     std::string arg = msg.get_arg(i);
+    // First argument should be quoted if FAILED or ERROR
     if((type == MessageType::FAILED || type == MessageType::ERROR) && i == 0){
       oss << "\"" << arg << "\"";
     } else {
@@ -83,6 +84,7 @@ void MessageSerialization::encode( const Message &msg, std::string &encoded_msg 
   oss << "\n";
   encoded_msg = oss.str();
 
+  // invalid message length check
   if (encoded_msg.size() > Message::MAX_ENCODED_LEN) {
     throw InvalidMessage("Encoded message exceeds maximum size");
   }
@@ -94,11 +96,11 @@ void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg
   if (encoded_msg_.empty()) {
     throw InvalidMessage("Empty message received");
   }
-  
+  //Message should end the /n
   if (encoded_msg_.back() != '\n') {
     throw InvalidMessage("Message didn't end with a newline");
   }
-
+  // Remove the trailing newline for processing
   std::string encoded_msg = encoded_msg_;
   if (!encoded_msg.empty() && encoded_msg.back() == '\n') {
     encoded_msg.pop_back(); // Remove trailing newline
@@ -124,6 +126,7 @@ void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg
         // Remove surrounding quotes
       quoted_token = quoted_token.substr(1, quoted_token.size() - 2); // Remove quotes
       }
+
       tokens.push_back(quoted_token);
     } else {
       tokens.push_back(token);
@@ -156,11 +159,13 @@ void MessageSerialization::decode( const std::string &encoded_msg_, Message &msg
     throw InvalidMessage("Empty message received");
   }
 
+  // Check if the first token is a valid message type
   auto it = type_map.find(tokens[0]);
   if (it == type_map.end())
   {
     throw InvalidMessage("Unknown message type: " + tokens[0]);
   }
+  
   msg = Message(); // Reset message
   msg.set_message_type(it->second);
   for (size_t i = 1; i < tokens.size(); ++i)
