@@ -10,6 +10,9 @@
 class Server {
 private:
   // TODO: add member variables
+  int listen_fd;                              
+  std::map<std::string, std::unique_ptr<Table>> tables; 
+  pthread_mutex_t tables_mutex;              
 
   // copy constructor and assignment operator are prohibited
   Server( const Server & );
@@ -27,13 +30,9 @@ public:
   void log_error( const std::string &what );
 
   // TODO: add member functions
-
-  // Some suggested member functions:
-/*
   void create_table( const std::string &name );
+
   Table *find_table( const std::string &name );
-  void log_error( const std::string &what );
-*/
 };
 
 

@@ -3,6 +3,7 @@
 
 #include <set>
 #include "message.h"
+#include "value_stack.h"
 #include "csapp.h"
 
 class Server; // forward declaration
@@ -17,6 +18,16 @@ private:
   // copy constructor and assignment operator are prohibited
   ClientConnection( const ClientConnection & );
   ClientConnection &operator=( const ClientConnection & );
+
+  void send_ok(std::string encoded_msg);
+  void send_failed(const std::string &what, std::string encoded_msg);
+  void send_error(const std::string &what, std::string encoded_msg);
+  void send_data(const std::string &data, std::string encoded_msg);
+
+  ValueStack m_stack;    
+  std::string m_table;     
+  std::string m_key;   
+  bool m_has_stack;   
 
 public:
   ClientConnection( Server *server, int client_fd );
