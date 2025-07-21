@@ -25,6 +25,20 @@ void Server::listen( const std::string &port )
   listen_fd = Open_listenfd(port.c_str());
 }
 
+void Server::create_table(const std::string &name) {
+  Guard g(tables_mutex);
+  if (tables.count(name) == 0)
+    tables[name] = std::make_unique<Table>(); 
+}
+
+Table *Server::find_table(const std::string &name) {
+  Guard g(tables_mutex);
+  auto it = tables.find(name);
+  if (it == tables.end()) return nullptr;
+  return it->second.get(); 
+}
+
+
 void Server::server_loop()
 {
   // TODO: implement
