@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <pthread.h>
+#include <memory>
 #include "table.h"
 #include "client_connection.h"
 

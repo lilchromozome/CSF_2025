@@ -17,6 +17,7 @@ private:
   Table &operator=( const Table & ) = delete;
 
 public:
+  Table();
   Table( const std::string &name );
   ~Table();
 

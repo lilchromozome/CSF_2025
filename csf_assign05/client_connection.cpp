@@ -17,7 +17,6 @@ ClientConnection::ClientConnection( Server *server, int client_fd )
 
 ClientConnection::~ClientConnection()
 {
-  // TODO: implement
   Close(m_client_fd);
 }
 

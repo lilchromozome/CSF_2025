@@ -3,6 +3,10 @@
 #include "exceptions.h"
 #include "guard.h"
 
+Table::Table(){
+  
+}
+
 Table::Table( const std::string &name )
   : m_name( name )
   // TODO: initialize additional member variables
