@@ -1,6 +1,7 @@
 #ifndef CLIENT_CONNECTION_H
 #define CLIENT_CONNECTION_H
 
+#include <map>
 #include <set>
 #include "message.h"
 #include "value_stack.h"
@@ -14,6 +15,9 @@ private:
   Server *m_server;
   int m_client_fd;
   rio_t m_fdbuf;
+
+  bool m_in_transaction = false;
+  std::map<std::string, std::map<std::string, std::string>> m_transaction_buffer;
 
   // copy constructor and assignment operator are prohibited
   ClientConnection( const ClientConnection & );

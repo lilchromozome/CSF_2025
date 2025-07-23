@@ -94,9 +94,20 @@ void ClientConnection::chat_with_client()
           send_failed("no active key", encoded_msg);
         } else {
           Table *t = m_server->find_table(m_table);
-          assert(t);
           std::string final_val = m_stack.get_top();
-          t->set(m_key, final_val);
+          if (!t) {
+            send_failed("no such table", encoded_msg);
+            break;
+          }
+        
+          if (m_in_transaction) {
+            m_transaction_buffer[m_table][m_key] = final_val;
+          } else {
+            t->lock();
+            t->set(m_key, final_val);
+            t->commit_changes(); 
+            t->unlock();
+          }
           send_ok(encoded_msg);
         }
         break;
@@ -112,7 +123,10 @@ void ClientConnection::chat_with_client()
           send_failed("no such key", encoded_msg);
         } else {
           // load into working stack
+          t->lock();
           std::string val = t->get(key);
+          t->unlock();
+
           m_stack = ValueStack();             // reset stack
           m_stack.push(val);
           m_table = table;
@@ -165,13 +179,38 @@ void ClientConnection::chat_with_client()
       // Client begins a transaction
       case MessageType::BEGIN: {
         // TODO
-        send_ok(encoded_msg);
+        if (m_in_transaction){
+          send_failed("already in transaction", encoded_msg);
+        } else {
+          m_in_transaction = true;
+          m_transaction_buffer.clear();
+          send_ok(encoded_msg);
+        }
         break;
       }
       // Client commits a transaction
       case MessageType::COMMIT: {
         // TODO
-        send_ok(encoded_msg);
+        if (!m_in_transaction) {
+          send_failed("not in transaction", encoded_msg);
+        } else {
+          for (const auto &table_pair : m_transaction_buffer) {
+            const std::string &table_name = table_pair.first;
+            Table *t = m_server->find_table(table_name);
+            if (!t) {
+              send_failed("no such table", encoded_msg);
+              continue;
+            }
+            for (const auto &key_value_pair : table_pair.second) {
+              const std::string &key = key_value_pair.first;
+              const std::string &value = key_value_pair.second;
+              t->set(key, value);
+            }
+          }
+          m_in_transaction = false;
+          m_transaction_buffer.clear();
+          send_ok(encoded_msg);
+        }
         break;
       }
       // Client logs out (end of connection)
