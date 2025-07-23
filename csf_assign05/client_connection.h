@@ -23,10 +23,23 @@ private:
   ClientConnection( const ClientConnection & );
   ClientConnection &operator=( const ClientConnection & );
 
+  std::set<Table*> m_locked_tables;
+
   void send_ok(std::string encoded_msg);
   void send_failed(const std::string &what, std::string encoded_msg);
   void send_error(const std::string &what, std::string encoded_msg);
   void send_data(const std::string &data, std::string encoded_msg);
+
+  void create(Message req, std::string encoded_msg);
+  void push(Message req, std::string encoded_msg);
+  void pop(std::string encoded_msg);
+  void top(std::string encoded_msg);
+  void set(std::string encoded_msg);
+  void get(Message req, std::string encoded_msg);
+  bool arithmetic(Message req, std::string encoded_msg);
+  void begin(std::string encoded_msg);
+  void commit(std::string encoded_msg);
+
 
   ValueStack m_stack;    
   std::string m_table;     

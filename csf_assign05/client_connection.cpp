@@ -20,6 +20,204 @@ ClientConnection::~ClientConnection()
   Close(m_client_fd);
 }
 
+//Ask server to create named table
+void ClientConnection::create(Message req, std::string encoded_msg){
+  std::string name = req.get_table();
+  m_server->create_table(name);
+  send_ok(encoded_msg);
+  return;
+}
+
+// Push a value onto the operand stack
+void ClientConnection::push(Message req, std::string encoded_msg){
+  if (!m_has_stack) {
+    send_failed("no active key", encoded_msg);
+  } else {
+    m_stack.push(req.get_value());
+    send_ok(encoded_msg);
+  }
+  return;
+}
+
+//Pop (discard) the top value from the operand stack
+void ClientConnection::pop(std::string encoded_msg){
+  if (!m_has_stack) {
+    send_failed("no active key", encoded_msg);
+  } else {
+    try {
+      m_stack.pop();
+      send_ok(encoded_msg);
+    } catch (const std::exception &e) {
+      send_failed("stack empty", encoded_msg);
+    }
+  }
+  return;
+}
+
+//	Retrieve the top value from the operand stack
+void ClientConnection::top(std::string encoded_msg){
+  if (!m_has_stack) {
+    send_failed("no active key", encoded_msg);
+  } else {
+    try {
+      std::string val = m_stack.get_top();
+      send_data(val, encoded_msg);
+    } catch (const std::exception &e) {
+      send_failed("stack empty", encoded_msg);
+    }
+  }
+  return;
+}
+
+// Set value of tuple named by key in table to the value popped from the operand stack
+void ClientConnection::set(std::string encoded_msg){
+  if (!m_has_stack) {
+    send_failed("no active key", encoded_msg);
+  } else {
+    Table *t = m_server->find_table(m_table);
+    std::string final_val = m_stack.get_top();
+    m_stack.pop();
+    if (!t) {
+      send_failed("no such table", encoded_msg);
+      return;
+    }
+  
+    if (m_in_transaction) {
+      if(m_locked_tables.insert(t).second){
+        if(!t->trylock()) throw FailedTransaction("could not lock table");
+      }
+      m_transaction_buffer[m_table][m_key] = final_val;
+    } else {
+      t->lock();
+      t->set(m_key, final_val);
+      t->commit_changes(); 
+      t->unlock();
+    }
+    send_ok(encoded_msg);
+  }
+  return;
+}
+
+// Push value of tuple named by key in table onto the operand stack
+void ClientConnection::get(Message req, std::string encoded_msg){
+    std::string table = req.get_table();
+    std::string key   = req.get_key();
+    Table *t = m_server->find_table(table);
+
+    if (!t) {
+      send_failed("no such table",encoded_msg);
+      return;
+    } 
+    if (m_in_transaction) {
+      if (!t-> trylock()) throw FailedTransaction("could not lock table");
+      m_locked_tables.insert(t);
+    }
+    if (!t->has_key(key)) {
+      send_failed("no such key", encoded_msg);
+      return;
+    }
+    // // load into working stack
+    // t->lock();
+    // std::string val = t->get(key);
+    // t->unlock();
+    std::string val = t->get(key);
+
+    m_stack = ValueStack();             // reset stack
+    m_stack.push(val);
+    m_table = table;
+    m_key   = key;
+    m_has_stack = true;
+    send_ok(encoded_msg);
+    return;
+}
+
+// Pop two integers from operand stack, add them, push sum
+// Pop two integers from operand stack, multiply them, push product
+// Pop right and left integers from operand stack, subtract right from left, push difference
+// Pop right and left integers from operand stack, divide left by right, push quotient
+bool ClientConnection::arithmetic(Message req, std::string encoded_msg){
+  if (!m_has_stack) {
+    send_failed("no active key", encoded_msg);
+  } else {
+    // need two operands
+    try {
+      std::string s1 = m_stack.get_top();
+      m_stack.pop();
+      std::string s2 = m_stack.get_top();
+      m_stack.pop();
+
+      int a = std::stoi(s1);
+      int b = std::stoi(s2);
+      double result;
+      switch (req.get_message_type()) {
+        case MessageType::ADD: result = b + a; break;
+        case MessageType::SUB: result = b - a; break;
+        case MessageType::MUL: result = b * a; break;
+        case MessageType::DIV:
+          if (a == 0) { send_failed("divide by zero", encoded_msg); return true; }
+          result = b / a;
+          break;
+        default: 
+          send_error("unexpected operation", encoded_msg);
+          return true;
+      }
+      m_stack.push(std::to_string(result));
+      send_ok(encoded_msg);
+    } catch (const std::invalid_argument &) {
+      send_failed("non-integer operand", encoded_msg);
+    } catch (const std::out_of_range &) {
+      send_failed("integer overflow", encoded_msg);
+    } catch (const std::exception &) {
+      send_failed("stack empty", encoded_msg);
+    }
+  }
+  return false;
+}
+
+// Client begins a transaction
+void ClientConnection::begin(std::string encoded_msg){
+  if (m_in_transaction){
+    send_failed("already in transaction", encoded_msg);
+  } else {
+    m_in_transaction = true;
+    m_transaction_buffer.clear();
+    m_locked_tables.clear(); 
+    send_ok(encoded_msg);
+  }
+  return;
+}
+
+// Client commits a transaction
+void ClientConnection::commit(std::string encoded_msg){
+   // TODO
+  if (!m_in_transaction) {
+    send_failed("not in transaction", encoded_msg);
+  } else {
+    for (const auto &table_pair : m_transaction_buffer) {
+      const std::string &table_name = table_pair.first;
+      Table *t = m_server->find_table(table_name);
+      if (!t) {
+        send_failed("no such table", encoded_msg);
+        continue;
+      }
+      for (const auto &key_value_pair : table_pair.second) {
+        const std::string &key = key_value_pair.first;
+        const std::string &value = key_value_pair.second;
+        t->set(key, value);
+      }
+      t->commit_changes();
+    }
+    //unlock all
+    for (auto *t : m_locked_tables) t->unlock();
+    m_locked_tables.clear();
+
+    m_in_transaction = false;
+    m_transaction_buffer.clear();
+    send_ok(encoded_msg);
+  }
+  return;
+}
+
 void ClientConnection::chat_with_client()
 {
   // TODO: implement
@@ -43,97 +241,28 @@ void ClientConnection::chat_with_client()
         send_ok(encoded_msg);
         break;
       }
-      //Ask server to create named table
       case MessageType::CREATE: {
-        std::string name = req.get_table();
-        m_server->create_table(name);
-        send_ok(encoded_msg);
+        create(req, encoded_msg);
         break;
       }
-      // Push a value onto the operand stack
       case MessageType::PUSH: {
-        if (!m_has_stack) {
-          send_failed("no active key", encoded_msg);
-        } else {
-          m_stack.push(req.get_value());
-          send_ok(encoded_msg);
-        }
+        push(req, encoded_msg);
         break;
       }
-      //Pop (discard) the top value from the operand stack
       case MessageType::POP: {
-        if (!m_has_stack) {
-          send_failed("no active key", encoded_msg);
-        } else {
-          try {
-            m_stack.pop();
-            send_ok(encoded_msg);
-          } catch (const std::exception &e) {
-            send_failed("stack empty", encoded_msg);
-          }
-        }
+        pop(encoded_msg);
         break;
       }
-      //	Retrieve the top value from the operand stack
       case MessageType::TOP: {
-        if (!m_has_stack) {
-          send_failed("no active key", encoded_msg);
-        } else {
-          try {
-            std::string val = m_stack.get_top();
-            send_data(val, encoded_msg);
-          } catch (const std::exception &e) {
-            send_failed("stack empty", encoded_msg);
-          }
-        }
+        top(encoded_msg);
         break;
       }
-      // Set value of tuple named by key in table to the value popped from the operand stack
       case MessageType::SET: {
-        if (!m_has_stack) {
-          send_failed("no active key", encoded_msg);
-        } else {
-          Table *t = m_server->find_table(m_table);
-          std::string final_val = m_stack.get_top();
-          if (!t) {
-            send_failed("no such table", encoded_msg);
-            break;
-          }
-        
-          if (m_in_transaction) {
-            m_transaction_buffer[m_table][m_key] = final_val;
-          } else {
-            t->lock();
-            t->set(m_key, final_val);
-            t->commit_changes(); 
-            t->unlock();
-          }
-          send_ok(encoded_msg);
-        }
+        set(encoded_msg);
         break;
       }
-      // Push value of tuple named by key in table onto the operand stack
       case MessageType::GET: {
-        std::string table = req.get_table();
-        std::string key   = req.get_key();
-        Table *t = m_server->find_table(table);
-        if (!t) {
-          send_failed("no such table",encoded_msg);
-        } else if (!t->has_key(key)) {
-          send_failed("no such key", encoded_msg);
-        } else {
-          // load into working stack
-          t->lock();
-          std::string val = t->get(key);
-          t->unlock();
-
-          m_stack = ValueStack();             // reset stack
-          m_stack.push(val);
-          m_table = table;
-          m_key   = key;
-          m_has_stack = true;
-          send_ok(encoded_msg);
-        }
+        get(req, encoded_msg);
         break;
       }
       case MessageType::ADD:    // Pop two integers from operand stack, add them, push sum
@@ -141,76 +270,16 @@ void ClientConnection::chat_with_client()
       case MessageType::MUL:    // Pop right and left integers from operand stack, subtract right from left, push difference
       case MessageType::DIV:    // Pop right and left integers from operand stack, divide left by right, push quotient
       {
-        if (!m_has_stack) {
-          send_failed("no active key", encoded_msg);
-        } else {
-          // need two operands
-          try {
-            std::string s1 = m_stack.get_top();
-            m_stack.pop();
-            std::string s2 = m_stack.get_top();
-            m_stack.pop();
-
-            int a = std::stoi(s1);
-            int b = std::stoi(s2);
-            double result;
-            switch (req.get_message_type()) {
-              case MessageType::ADD: result = b + a; break;
-              case MessageType::SUB: result = b - a; break;
-              case MessageType::MUL: result = b * a; break;
-              case MessageType::DIV:
-                if (a == 0) { send_failed("divide by zero", encoded_msg); continue; }
-                result = b / a;
-                break;
-              default: result = 0; break;
-            }
-            m_stack.push(std::to_string(result));
-            send_ok(encoded_msg);
-          } catch (const std::invalid_argument &) {
-            send_failed("non-integer operand", encoded_msg);
-          } catch (const std::out_of_range &) {
-            send_failed("integer overflow", encoded_msg);
-          } catch (const std::exception &) {
-            send_failed("stack empty", encoded_msg);
-          }
-        }
+        if(arithmetic(req, encoded_msg)) continue;
         break;
       }
-      // Client begins a transaction
       case MessageType::BEGIN: {
         // TODO
-        if (m_in_transaction){
-          send_failed("already in transaction", encoded_msg);
-        } else {
-          m_in_transaction = true;
-          m_transaction_buffer.clear();
-          send_ok(encoded_msg);
-        }
+        begin(encoded_msg);
         break;
       }
-      // Client commits a transaction
       case MessageType::COMMIT: {
-        // TODO
-        if (!m_in_transaction) {
-          send_failed("not in transaction", encoded_msg);
-        } else {
-          for (const auto &table_pair : m_transaction_buffer) {
-            const std::string &table_name = table_pair.first;
-            Table *t = m_server->find_table(table_name);
-            if (!t) {
-              send_failed("no such table", encoded_msg);
-              continue;
-            }
-            for (const auto &key_value_pair : table_pair.second) {
-              const std::string &key = key_value_pair.first;
-              const std::string &value = key_value_pair.second;
-              t->set(key, value);
-            }
-          }
-          m_in_transaction = false;
-          m_transaction_buffer.clear();
-          send_ok(encoded_msg);
-        }
+        commit(encoded_msg);
         break;
       }
       // Client logs out (end of connection)
@@ -229,6 +298,8 @@ void ClientConnection::chat_with_client()
 }
 
 // TODO: additional member functions
+
+
 
 void ClientConnection::send_ok(std::string encoded_msg) {
   Message resp(MessageType::OK);
