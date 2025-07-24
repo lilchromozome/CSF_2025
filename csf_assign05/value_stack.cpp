@@ -39,3 +39,7 @@ void ValueStack::pop()
   }
   return stack.pop_back();
 }
+
+int ValueStack::size(){
+  return stack.size();
+}

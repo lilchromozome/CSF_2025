@@ -15,6 +15,7 @@ private:
   Server *m_server;
   int m_client_fd;
   rio_t m_fdbuf;
+  bool m_has_logged_in = false;
 
   bool m_in_transaction = false;
   std::map<std::string, std::map<std::string, std::string>> m_transaction_buffer;

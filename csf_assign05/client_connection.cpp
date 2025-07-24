@@ -20,6 +20,24 @@ ClientConnection::~ClientConnection()
   Close(m_client_fd);
 }
 
+
+static bool is_valid_identifier(const std::string &u){
+  if (u.empty()) {
+    return false;
+  }
+  // An identifier must start with letter or _
+  if (!std::isalpha(u[0]) && u[0] != '_') {
+    return false;
+  }
+
+  // All the parts of the identifier must be alphanumeric or _
+  for (size_t i = 1; i < u.size(); ++i) {
+    if (!std::isalnum(u[i]) && u[i] != '_') {
+      return false;
+    }
+  }
+  return true;
+}
 //Ask server to create named table
 void ClientConnection::create(Message req, std::string encoded_msg){
   std::string name = req.get_table();
@@ -64,6 +82,7 @@ void ClientConnection::top(std::string encoded_msg){
       std::string val = m_stack.get_top();
       send_data(val, encoded_msg);
     } catch (const std::exception &e) {
+      std::cout << e.what() << std::endl;
       send_failed("stack empty", encoded_msg);
     }
   }
@@ -74,6 +93,13 @@ void ClientConnection::top(std::string encoded_msg){
 void ClientConnection::set(const Message &req, std::string encoded_msg){
   std::string table = req.get_table();
   std::string key = req.get_key();
+  std::cout << "set " << table << ", " << key << std::endl;
+
+  if(!is_valid_identifier(key)){
+    send_failed("invalid key name", encoded_msg);
+    return;
+  }
+
   Table *t = m_server->find_table(table);
 
   if (!m_has_stack) {
@@ -120,69 +146,54 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
 
 // Push value of tuple named by key in table onto the operand stack
 void ClientConnection::get(Message req, std::string encoded_msg){
-    std::string table = req.get_table();
-    std::string key   = req.get_key();
-    Table *t = m_server->find_table(table);
+  std::string table = req.get_table();
+  std::string key   = req.get_key();
+  std::cout << "get " << table << ", " << key << std::endl;
+  Table *t = m_server->find_table(table);
 
-    if (!t) {
-      send_failed("no such table",encoded_msg);
-      return;
-    } 
-    if (m_in_transaction) {
-      if (m_locked_tables.insert(t).second){
-        if (!t->trylock()) {
-          rollback_transaction();
-          throw FailedTransaction("could not lock table");
+  if (!t) {
+    send_failed("no such table",encoded_msg);
+    return;
+  } 
+  if (m_in_transaction) {
+    // std::cout << m_in_transaction << " in transaction" << std::endl;
+    if (m_locked_tables.insert(t).second){
+      if (!t->trylock()) {
+        rollback_transaction();
+        throw FailedTransaction("could not lock table");
       }
     } else{
-        t->lock();
+      t->lock();
     }
-      // if (!t-> trylock()) throw FailedTransaction("could not lock table");
-      // m_locked_tables.insert(t);
+  }
+
+  try {
+    if(!t->has_key(key)){
+      throw OperationException("no such key");
     }
-    //if (!t->has_key(key)) {
-      //if (!m_in_transaction) t->unlock();
-      //send_failed("no such key", encoded_msg);
-      //return;
-    //}
-    try {
-      std::string val = t->get(key);
-      m_stack = ValueStack(); // reset stack
-      m_stack.push(val);
-      m_table = table;
-      m_key   = key;
-      m_has_stack = true;
+    std::string val = t->get(key);
+      std::cout << val << std::endl;
+    m_stack = ValueStack(); // reset stack
+    m_stack.push(val);
+    m_table = table;
+    m_key   = key;
+    m_has_stack = true;
 
-      if (!m_in_transaction) {
-        t->unlock();
-      }
-      send_ok(encoded_msg);
-    }catch (const OperationException &e) {
-      if (m_in_transaction) {
-        rollback_transaction();                        // rollback if inside transaction
-        throw FailedTransaction("no such key");        // MUST throw
-      } else {
-        t->unlock();                                   // just unlock if no transaction
-      send_failed("no such key", encoded_msg);
-      }
-      return;
+    if (!m_in_transaction) {
+      t->unlock();
     }
-    
-    // // load into working stack
-    // t->lock();
-    // std::string val = t->get(key);
-    // t->unlock();
-
-    //std::string val = t->get(key);
-    //if (!m_in_transaction) t->unlock();
-
-    //m_stack = ValueStack();             // reset stack
-    //m_stack.push(val);
-    //m_table = table;
-    //m_key   = key;
-    //m_has_stack = true;
-    //send_ok(encoded_msg);
-    //return;
+    send_ok(encoded_msg);
+  } catch (const OperationException &e) {
+    std::cout << e.what() << std::endl;
+    if (m_in_transaction) {
+      rollback_transaction();                        // rollback if inside transaction
+      throw FailedTransaction("no such key");        // MUST throw
+    } else {
+      t->unlock();                                   // just unlock if no transaction
+      send_failed(e.what(), encoded_msg);
+    }
+    return;
+  }
 }
 
 // Pop two integers from operand stack, add them, push sum
@@ -190,41 +201,47 @@ void ClientConnection::get(Message req, std::string encoded_msg){
 // Pop right and left integers from operand stack, subtract right from left, push difference
 // Pop right and left integers from operand stack, divide left by right, push quotient
 bool ClientConnection::arithmetic(Message req, std::string encoded_msg){
-  if (!m_has_stack) {
-    send_failed("no active key", encoded_msg);
-  } else {
-    // need two operands
-    try {
-      std::string s1 = m_stack.get_top();
-      m_stack.pop();
-      std::string s2 = m_stack.get_top();
-      m_stack.pop();
-
-      int a = std::stoi(s1);
-      int b = std::stoi(s2);
-      double result;
-      switch (req.get_message_type()) {
-        case MessageType::ADD: result = b + a; break;
-        case MessageType::SUB: result = b - a; break;
-        case MessageType::MUL: result = b * a; break;
-        case MessageType::DIV:
-          if (a == 0) { send_failed("divide by zero", encoded_msg); return true; }
-          result = b / a;
-          break;
-        default: 
-          send_error("unexpected operation", encoded_msg);
-          return true;
-      }
-      m_stack.push(std::to_string(result));
-      send_ok(encoded_msg);
-    } catch (const std::invalid_argument &) {
-      send_failed("non-integer operand", encoded_msg);
-    } catch (const std::out_of_range &) {
-      send_failed("integer overflow", encoded_msg);
-    } catch (const std::exception &) {
-      send_failed("stack empty", encoded_msg);
-    }
+  // if (!m_has_stack) {
+  //   send_failed("no active key", encoded_msg);
+  //   return true;
+  // } 
+  if(m_stack.size() < 2){
+    send_failed("not enough operands", encoded_msg);
+    return true;
   }
+
+  // need two operands
+  try {
+    std::string s1 = m_stack.get_top();
+    m_stack.pop();
+    std::string s2 = m_stack.get_top();
+    m_stack.pop();
+
+    int a = std::stoi(s1);
+    int b = std::stoi(s2);
+    double result;
+    switch (req.get_message_type()) {
+      case MessageType::ADD: result = b + a; break;
+      case MessageType::SUB: result = b - a; break;
+      case MessageType::MUL: result = b * a; break;
+      case MessageType::DIV:
+        if (a == 0) { send_failed("divide by zero", encoded_msg); return true; }
+        result = b / a;
+        break;
+      default: 
+        send_error("unexpected operation", encoded_msg);
+        return true;
+    }
+    m_stack.push(std::to_string(result));
+    send_ok(encoded_msg);
+  } catch (const std::invalid_argument &) {
+    send_failed("non-integer operand", encoded_msg);
+  } catch (const std::out_of_range &) {
+    send_failed("integer overflow", encoded_msg);
+  } catch (const std::exception &) {
+    send_failed("stack empty", encoded_msg);
+  }
+
   return false;
 }
 
@@ -303,6 +320,12 @@ void ClientConnection::chat_with_client()
 
     Message req;
     MessageSerialization::decode(buf, req);
+
+    if(!m_has_logged_in && req.get_message_type() != MessageType::LOGIN){
+      send_error("first operation must be LOGIN", encoded_msg);
+      return;
+    }
+
     if (!req.is_valid()) {
       send_error("invalid request", encoded_msg);
       continue;
@@ -314,6 +337,12 @@ void ClientConnection::chat_with_client()
       // Client logs in
       case MessageType::LOGIN: {
         // Always ok?
+        const std::string &user = req.get_username();
+        if(!is_valid_identifier(user)){
+          send_failed("invalid username", encoded_msg);
+          return;
+        }
+        m_has_logged_in = true;
         send_ok(encoded_msg);
         break;
       }

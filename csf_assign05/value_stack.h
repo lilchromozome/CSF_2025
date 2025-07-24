@@ -21,6 +21,7 @@ public:
 
   std::string get_top() const;
   void pop();
+  int size();
 };
 
 #endif // VALUE_STACK_H
