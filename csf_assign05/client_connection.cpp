@@ -94,9 +94,12 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
 
   if (m_in_transaction) {
     if(m_locked_tables.insert(t).second){
-      if(!t->trylock()) throw FailedTransaction("could not lock table");
+      if (!t->trylock()) {
+        rollback_transaction();
+        throw FailedTransaction("could not lock table");
+      }
     }
-    m_transaction_buffer[m_table][m_key] = final_val;
+     t->set(m_key, final_val);
   } else {
     t->lock();
     t->set(m_key, final_val);
@@ -120,11 +123,13 @@ void ClientConnection::get(Message req, std::string encoded_msg){
     } 
     if (m_in_transaction) {
       if (m_locked_tables.insert(t).second){
-        if (!t->trylock()) 
+        if (!t->trylock()) {
+          rollback_transaction();
           throw FailedTransaction("could not lock table");
-      } else{
-        t->lock();
       }
+    } else{
+        t->lock();
+    }
       // if (!t-> trylock()) throw FailedTransaction("could not lock table");
       // m_locked_tables.insert(t);
     }
@@ -194,6 +199,7 @@ bool ClientConnection::arithmetic(Message req, std::string encoded_msg){
 
 // Client begins a transaction
 void ClientConnection::begin(std::string encoded_msg){
+  // make sure not in transaction
   if (m_in_transaction){
     send_failed("already in transaction", encoded_msg);
   } else {
@@ -210,31 +216,37 @@ void ClientConnection::commit(std::string encoded_msg){
    // TODO
   if (!m_in_transaction) {
     send_failed("not in transaction", encoded_msg);
-  } else {
-    for (const auto &table_pair : m_transaction_buffer) {
-      const std::string &table_name = table_pair.first;
-      Table *t = m_server->find_table(table_name);
-      if (!t) {
-        send_failed("no such table", encoded_msg);
-        continue;
-      }
-      for (const auto &key_value_pair : table_pair.second) {
-        const std::string &key = key_value_pair.first;
-        const std::string &value = key_value_pair.second;
-        t->set(key, value);
-      }
-      t->commit_changes();
-    }
-    //unlock all
-    for (auto *t : m_locked_tables) t->unlock();
-    m_locked_tables.clear();
-
-    m_in_transaction = false;
-    m_transaction_buffer.clear();
-    send_ok(encoded_msg);
   }
-  return;
+  try {
+    for (Table *table : m_locked_tables) {
+      table->commit_changes();  
+    }
+    for (Table *table : m_locked_tables) {
+      table->unlock();
+    }
+
+    m_locked_tables.clear();
+    m_in_transaction = false;
+    send_ok(encoded_msg);
+  } catch (const std::exception &e) {
+    throw FailedTransaction("commit failed");
+  }
 }
+
+void ClientConnection::rollback_transaction() {
+  if (m_in_transaction) {
+    for (Table *t : m_locked_tables) {
+      t->rollback_changes();  // revert
+    }
+    for (Table *t : m_locked_tables) {
+      t->unlock();
+    }
+    m_locked_tables.clear();
+    m_transaction_buffer.clear();
+    m_in_transaction = false;
+  }
+}
+
 
 void ClientConnection::chat_with_client()
 {
@@ -252,6 +264,8 @@ void ClientConnection::chat_with_client()
       continue;
     }
 
+    try{
+      
     switch (req.get_message_type()) {
       // Client logs in
       case MessageType::LOGIN: {
@@ -311,6 +325,10 @@ void ClientConnection::chat_with_client()
         send_error("unrecognized command", encoded_msg);
         break;
       }
+    }
+  } catch (const FailedTransaction &e) {
+      send_failed(e.what(), encoded_msg);
+      rollback_transaction();
     }
   }
 }

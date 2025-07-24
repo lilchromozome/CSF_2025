@@ -40,6 +40,8 @@ private:
   void begin(std::string encoded_msg);
   void commit(std::string encoded_msg);
 
+  void rollback_transaction();  
+
 
   ValueStack m_stack;    
   std::string m_table;     
