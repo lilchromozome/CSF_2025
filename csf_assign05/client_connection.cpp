@@ -78,43 +78,31 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
 
   if (!m_has_stack) {
     send_failed("no active key", encoded_msg);
+    return;
   } 
   if (!t) {
     send_failed("no such table", encoded_msg);
     return;
   }
 
-  //m_table = table;
-  //m_key = key;
-  //m_has_stack = true;
-
-  //std::string final_val = m_stack.get_top();
-  //m_stack.pop();
-
-
-  if (m_in_transaction) {
-    if(m_locked_tables.insert(t).second){
-      if (!t->trylock()) {
-        rollback_transaction();
-        throw FailedTransaction("could not lock table");
-      }
-    }
-     //t->set(m_key, final_val);
-     
-  } else {
-    t->lock();
-    //t->set(m_key, final_val);
-    //t->commit_changes(); 
-    //t->unlock();
-  }
-
-  try{
+  try {
     std::string val = m_stack.get_top();
     m_stack.pop();
-    t->set(key, val);
 
-    if (!m_in_transaction) {
-      t->commit_changes(); // commit changes immediately
+    if (m_in_transaction) {
+      // first-time lock if needed
+      if (m_locked_tables.insert(t).second) {
+        if (!t->trylock()) {
+          rollback_transaction();
+          throw FailedTransaction("could not lock table");
+        }
+      }
+      // store in transaction buffer only
+      m_transaction_buffer[table][key] = val;
+    } else {
+      t->lock();
+      t->set(key, val);
+      t->commit_changes();
       t->unlock();
     }
 
@@ -122,15 +110,12 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
     m_key = key;
     m_has_stack = true;
     send_ok(encoded_msg);
-  }catch (const std::exception &e) {
+  } catch (const std::exception &e) {
     if (!m_in_transaction) {
       t->unlock();
     }
     send_failed("set failed: " + std::string(e.what()), encoded_msg);
-    return;
   }
-
-  return;
 }
 
 // Push value of tuple named by key in table onto the operand stack
@@ -258,25 +243,40 @@ void ClientConnection::begin(std::string encoded_msg){
 
 // Client commits a transaction
 void ClientConnection::commit(std::string encoded_msg){
-   // TODO
   if (!m_in_transaction) {
     send_failed("not in transaction", encoded_msg);
+    return;
   }
+
   try {
-    for (Table *table : m_locked_tables) {
-      table->commit_changes();  
-    }
-    for (Table *table : m_locked_tables) {
-      table->unlock();
+    // Apply all buffered writes
+    for (const auto &[table_name, keyval_map] : m_transaction_buffer) {
+      Table *t = m_server->find_table(table_name);
+      if (!t) continue; // Table might have been deleted
+      for (const auto &[key, val] : keyval_map) {
+        t->set(key, val);
+      }
     }
 
+    // Commit and unlock all locked tables
+    for (Table *t : m_locked_tables) {
+      t->commit_changes();
+    }
+    for (Table *t : m_locked_tables) {
+      t->unlock();
+    }
+
+    m_transaction_buffer.clear();
     m_locked_tables.clear();
     m_in_transaction = false;
+
     send_ok(encoded_msg);
   } catch (const std::exception &e) {
+    rollback_transaction();
     throw FailedTransaction("commit failed");
   }
 }
+
 
 void ClientConnection::rollback_transaction() {
   if (m_in_transaction) {
