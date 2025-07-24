@@ -219,7 +219,7 @@ bool ClientConnection::arithmetic(Message req, std::string encoded_msg){
 
     int a = std::stoi(s1);
     int b = std::stoi(s2);
-    double result;
+    int result;
     switch (req.get_message_type()) {
       case MessageType::ADD: result = b + a; break;
       case MessageType::SUB: result = b - a; break;
