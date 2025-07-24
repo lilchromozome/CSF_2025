@@ -84,12 +84,12 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
     return;
   }
 
-  m_table = table;
-  m_key = key;
-  m_has_stack = true;
+  //m_table = table;
+  //m_key = key;
+  //m_has_stack = true;
 
-  std::string final_val = m_stack.get_top();
-  m_stack.pop();
+  //std::string final_val = m_stack.get_top();
+  //m_stack.pop();
 
 
   if (m_in_transaction) {
@@ -99,14 +99,36 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
         throw FailedTransaction("could not lock table");
       }
     }
-     t->set(m_key, final_val);
+     //t->set(m_key, final_val);
+     
   } else {
     t->lock();
-    t->set(m_key, final_val);
-    t->commit_changes(); 
-    t->unlock();
+    //t->set(m_key, final_val);
+    //t->commit_changes(); 
+    //t->unlock();
   }
-  send_ok(encoded_msg);
+
+  try{
+    std::string val = m_stack.get_top();
+    m_stack.pop();
+    t->set(key, val);
+
+    if (!m_in_transaction) {
+      t->commit_changes(); // commit changes immediately
+      t->unlock();
+    }
+
+    m_table = table;
+    m_key = key;
+    m_has_stack = true;
+    send_ok(encoded_msg);
+  }catch (const std::exception &e) {
+    if (!m_in_transaction) {
+      t->unlock();
+    }
+    send_failed("set failed: " + std::string(e.what()), encoded_msg);
+    return;
+  }
 
   return;
 }
@@ -133,25 +155,49 @@ void ClientConnection::get(Message req, std::string encoded_msg){
       // if (!t-> trylock()) throw FailedTransaction("could not lock table");
       // m_locked_tables.insert(t);
     }
-    if (!t->has_key(key)) {
-      if (!m_in_transaction) t->unlock();
+    //if (!t->has_key(key)) {
+      //if (!m_in_transaction) t->unlock();
+      //send_failed("no such key", encoded_msg);
+      //return;
+    //}
+    try {
+      std::string val = t->get(key);
+      m_stack = ValueStack(); // reset stack
+      m_stack.push(val);
+      m_table = table;
+      m_key   = key;
+      m_has_stack = true;
+
+      if (!m_in_transaction) {
+        t->unlock();
+      }
+      send_ok(encoded_msg);
+    }catch (const OperationException &e) {
+      if (m_in_transaction) {
+        rollback_transaction();                        // rollback if inside transaction
+        throw FailedTransaction("no such key");        // MUST throw
+      } else {
+        t->unlock();                                   // just unlock if no transaction
       send_failed("no such key", encoded_msg);
+      }
       return;
     }
+    
     // // load into working stack
     // t->lock();
     // std::string val = t->get(key);
     // t->unlock();
-    std::string val = t->get(key);
-    if (!m_in_transaction) t->unlock();
 
-    m_stack = ValueStack();             // reset stack
-    m_stack.push(val);
-    m_table = table;
-    m_key   = key;
-    m_has_stack = true;
-    send_ok(encoded_msg);
-    return;
+    //std::string val = t->get(key);
+    //if (!m_in_transaction) t->unlock();
+
+    //m_stack = ValueStack();             // reset stack
+    //m_stack.push(val);
+    //m_table = table;
+    //m_key   = key;
+    //m_has_stack = true;
+    //send_ok(encoded_msg);
+    //return;
 }
 
 // Pop two integers from operand stack, add them, push sum
@@ -204,7 +250,6 @@ void ClientConnection::begin(std::string encoded_msg){
     send_failed("already in transaction", encoded_msg);
   } else {
     m_in_transaction = true;
-    m_transaction_buffer.clear();
     m_locked_tables.clear(); 
     send_ok(encoded_msg);
   }
@@ -242,7 +287,6 @@ void ClientConnection::rollback_transaction() {
       t->unlock();
     }
     m_locked_tables.clear();
-    m_transaction_buffer.clear();
     m_in_transaction = false;
   }
 }
