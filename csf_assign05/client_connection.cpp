@@ -76,8 +76,6 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
   std::string key = req.get_key();
   Table *t = m_server->find_table(table);
 
-  // std::cout << t << std::endl;
-
   if (!m_has_stack) {
     send_failed("no active key", encoded_msg);
   } 
@@ -131,6 +129,7 @@ void ClientConnection::get(Message req, std::string encoded_msg){
       // m_locked_tables.insert(t);
     }
     if (!t->has_key(key)) {
+      if (!m_in_transaction) t->unlock();
       send_failed("no such key", encoded_msg);
       return;
     }
@@ -139,6 +138,7 @@ void ClientConnection::get(Message req, std::string encoded_msg){
     // std::string val = t->get(key);
     // t->unlock();
     std::string val = t->get(key);
+    if (!m_in_transaction) t->unlock();
 
     m_stack = ValueStack();             // reset stack
     m_stack.push(val);
