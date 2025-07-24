@@ -74,7 +74,9 @@ void ClientConnection::top(std::string encoded_msg){
 void ClientConnection::set(const Message &req, std::string encoded_msg){
   std::string table = req.get_table();
   std::string key = req.get_key();
-  Table *t = m_server->find_table(m_table);
+  Table *t = m_server->find_table(table);
+
+  // std::cout << t << std::endl;
 
   if (!m_has_stack) {
     send_failed("no active key", encoded_msg);

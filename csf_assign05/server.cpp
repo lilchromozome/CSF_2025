@@ -31,12 +31,13 @@ void Server::create_table(const std::string &name) {
     tables[name] = std::make_unique<Table>(); 
   //Only for test
     // tables[name]->set("default_key", "0");
-    
+
 }
 
 Table *Server::find_table(const std::string &name) {
   Guard g(tables_mutex);
   auto it = tables.find(name);
+  // std::cout << name << std::endl;
   if (it == tables.end()) return nullptr;
   return it->second.get(); 
 }
