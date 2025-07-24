@@ -52,6 +52,10 @@ int main(int argc, char **argv)
 
   //Login
   handle_message(Message(MessageType::LOGIN, {username}), clientfd, in, encoded_msg, msg);
+  // // create table
+  // handle_message(Message(MessageType::CREATE, {table}), clientfd, in, encoded_msg, msg);
+  // // load key
+  // handle_message(Message(MessageType::GET, {table, key}), clientfd, in, encoded_msg, msg);
   // Push
   handle_message(Message(MessageType::PUSH, {value}), clientfd, in, encoded_msg, msg);
   // Set

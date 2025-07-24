@@ -52,6 +52,8 @@ int main(int argc, char **argv)
 
   //Login
   handle_message(Message(MessageType::LOGIN, {username}), clientfd, in, encoded_msg, msg);
+  // create table
+  // handle_message(Message(MessageType::CREATE, {table}),clientfd, in, encoded_msg, msg);
   //Get
   handle_message(Message(MessageType::GET, {table, key}), clientfd, in, encoded_msg, msg);
 

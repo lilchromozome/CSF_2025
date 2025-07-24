@@ -30,7 +30,8 @@ void Server::create_table(const std::string &name) {
   if (tables.count(name) == 0)
     tables[name] = std::make_unique<Table>(); 
   //Only for test
-    tables[name]->set("default_key", "0");
+    // tables[name]->set("default_key", "0");
+    
 }
 
 Table *Server::find_table(const std::string &name) {
@@ -82,7 +83,7 @@ void *Server::client_worker( void *arg )
   client->chat_with_client();
   return nullptr;
 */
-
+  pthread_detach( pthread_self() );
   std::unique_ptr<ClientConnection> client(static_cast<ClientConnection *>(arg));
   client->chat_with_client();  
   return nullptr;

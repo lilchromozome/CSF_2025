@@ -34,7 +34,7 @@ private:
   void push(Message req, std::string encoded_msg);
   void pop(std::string encoded_msg);
   void top(std::string encoded_msg);
-  void set(std::string encoded_msg);
+  void set(const Message &req, std::string encoded_msg);
   void get(Message req, std::string encoded_msg);
   bool arithmetic(Message req, std::string encoded_msg);
   void begin(std::string encoded_msg);

@@ -31,11 +31,12 @@ void ClientConnection::create(Message req, std::string encoded_msg){
 // Push a value onto the operand stack
 void ClientConnection::push(Message req, std::string encoded_msg){
   if (!m_has_stack) {
-    send_failed("no active key", encoded_msg);
-  } else {
-    m_stack.push(req.get_value());
-    send_ok(encoded_msg);
-  }
+    m_stack = ValueStack();
+    m_has_stack = true;
+    // send_failed("no active key", encoded_msg);
+  } 
+  m_stack.push(req.get_value());
+  send_ok(encoded_msg);
   return;
 }
 
@@ -70,31 +71,40 @@ void ClientConnection::top(std::string encoded_msg){
 }
 
 // Set value of tuple named by key in table to the value popped from the operand stack
-void ClientConnection::set(std::string encoded_msg){
+void ClientConnection::set(const Message &req, std::string encoded_msg){
+  std::string table = req.get_table();
+  std::string key = req.get_key();
+  Table *t = m_server->find_table(m_table);
+
   if (!m_has_stack) {
     send_failed("no active key", encoded_msg);
-  } else {
-    Table *t = m_server->find_table(m_table);
-    std::string final_val = m_stack.get_top();
-    m_stack.pop();
-    if (!t) {
-      send_failed("no such table", encoded_msg);
-      return;
-    }
-  
-    if (m_in_transaction) {
-      if(m_locked_tables.insert(t).second){
-        if(!t->trylock()) throw FailedTransaction("could not lock table");
-      }
-      m_transaction_buffer[m_table][m_key] = final_val;
-    } else {
-      t->lock();
-      t->set(m_key, final_val);
-      t->commit_changes(); 
-      t->unlock();
-    }
-    send_ok(encoded_msg);
+  } 
+  if (!t) {
+    send_failed("no such table", encoded_msg);
+    return;
   }
+
+  m_table = table;
+  m_key = key;
+  m_has_stack = true;
+
+  std::string final_val = m_stack.get_top();
+  m_stack.pop();
+
+
+  if (m_in_transaction) {
+    if(m_locked_tables.insert(t).second){
+      if(!t->trylock()) throw FailedTransaction("could not lock table");
+    }
+    m_transaction_buffer[m_table][m_key] = final_val;
+  } else {
+    t->lock();
+    t->set(m_key, final_val);
+    t->commit_changes(); 
+    t->unlock();
+  }
+  send_ok(encoded_msg);
+
   return;
 }
 
@@ -109,8 +119,14 @@ void ClientConnection::get(Message req, std::string encoded_msg){
       return;
     } 
     if (m_in_transaction) {
-      if (!t-> trylock()) throw FailedTransaction("could not lock table");
-      m_locked_tables.insert(t);
+      if (m_locked_tables.insert(t).second){
+        if (!t->trylock()) 
+          throw FailedTransaction("could not lock table");
+      } else{
+        t->lock();
+      }
+      // if (!t-> trylock()) throw FailedTransaction("could not lock table");
+      // m_locked_tables.insert(t);
     }
     if (!t->has_key(key)) {
       send_failed("no such key", encoded_msg);
@@ -258,7 +274,7 @@ void ClientConnection::chat_with_client()
         break;
       }
       case MessageType::SET: {
-        set(encoded_msg);
+        set(req, encoded_msg);
         break;
       }
       case MessageType::GET: {
