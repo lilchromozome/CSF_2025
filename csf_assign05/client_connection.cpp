@@ -139,6 +139,128 @@ void ClientConnection::get(Message req, std::string encoded_msg){
     // std::string val = t->get(key);
     // t->unlock();
     std::string val = t->get(key);
+void ClientConnection::chat_with_client()
+{
+  // TODO: implement
+  char buf[Message::MAX_ENCODED_LEN];
+  std::string encoded_msg;
+  while (true) {
+    if (Rio_readlineb(&m_fdbuf, buf, sizeof(buf)) <= 0)
+      break; // client closed
+
+    Message req;
+    MessageSerialization::decode(buf, req);
+    if (!req.is_valid()) {
+      send_error("invalid request", encoded_msg);
+      continue;
+    }
+
+    switch (req.get_message_type()) {
+      // Client logs in
+      case MessageType::LOGIN: {
+        // Always ok?
+        send_ok(encoded_msg);
+        break;
+      }
+      //Ask server to create named table
+      case MessageType::CREATE: {
+        std::string name = req.get_table();
+        m_server->create_table(name);
+        send_ok(encoded_msg);
+        break;
+      }
+      // Push a value onto the operand stack
+      case MessageType::PUSH: {
+        if (!m_has_stack) {
+          send_failed("no active key", encoded_msg);
+        } else {
+          m_stack.push(req.get_value());
+          send_ok(encoded_msg);
+        }
+        break;
+      }
+      //Pop (discard) the top value from the operand stack
+      case MessageType::POP: {
+        if (!m_has_stack) {
+          send_failed("no active key", encoded_msg);
+        } else {
+          try {
+            m_stack.pop();
+            send_ok(encoded_msg);
+          } catch (const std::exception &e) {
+            send_failed("stack empty", encoded_msg);
+          }
+        }
+        break;
+      }
+      //	Retrieve the top value from the operand stack
+      case MessageType::TOP: {
+        if (!m_has_stack) {
+          send_failed("no active key", encoded_msg);
+        } else {
+          try {
+            std::string val = m_stack.get_top();
+            send_data(val, encoded_msg);
+          } catch (const std::exception &e) {
+            send_failed("stack empty", encoded_msg);
+          }
+        }
+        break;
+      }
+      // Set value of tuple named by key in table to the value popped from the operand stack
+      case MessageType::SET: {
+        if (m_table.empty()) {
+          send_failed("no table selected", encoded_msg);
+          break;
+        }
+        
+        if (!m_has_stack) {
+          send_failed("no active key", encoded_msg);
+        } else {
+          Table *t = m_server->find_table(m_table);
+          
+          if (!t) {
+            send_failed("no such table", encoded_msg);
+            break;
+          }
+          std::string final_val;
+          try {
+            final_val = m_stack.get_top();
+          } catch (const std::exception &e) {
+            send_failed("stack empty", encoded_msg);
+            break;
+          }
+        
+          if (m_in_transaction) {
+            m_transaction_buffer[m_table][m_key] = final_val;
+          } else {
+            t->lock();
+            t->set(m_key, final_val);
+            t->commit_changes(); 
+            t->unlock();
+          }
+          send_ok(encoded_msg);
+        }
+        break;
+      }
+      // Push value of tuple named by key in table onto the operand stack
+      case MessageType::GET: {
+        if (m_table.empty()) {
+          send_failed("no table selected", encoded_msg);
+          break;
+        }
+        std::string table = req.get_table();
+        std::string key   = req.get_key();
+        Table *t = m_server->find_table(table);
+        if (!t) {
+          send_failed("no such table",encoded_msg);
+        } else if (!t->has_key(key)) {
+          send_failed("no such key", encoded_msg);
+        } else {
+          // load into working stack
+          t->lock();
+          std::string val = t->get(key);
+          t->unlock();
 
     m_stack = ValueStack();             // reset stack
     m_stack.push(val);
@@ -298,6 +420,72 @@ void ClientConnection::chat_with_client()
       }
       case MessageType::COMMIT: {
         commit(encoded_msg);
+            int a = std::stoi(s1);
+            int b = std::stoi(s2);
+            double result;
+            switch (req.get_message_type()) {
+              case MessageType::ADD: result = b + a; break;
+              case MessageType::SUB: result = b - a; break;
+              case MessageType::MUL: result = b * a; break;
+              case MessageType::DIV:
+                if (a == 0) { send_failed("divide by zero", encoded_msg); continue; }
+                result = b / a;
+                break;
+              default: result = 0; break;
+            }
+            m_stack.push(std::to_string(result));
+            send_ok(encoded_msg);
+          } catch (const std::invalid_argument &) {
+            send_failed("non-integer operand", encoded_msg);
+          } catch (const std::out_of_range &) {
+            send_failed("integer overflow", encoded_msg);
+          } catch (const std::exception &) {
+            send_failed("stack empty", encoded_msg);
+          }
+        }
+        break;
+      }
+      // Client begins a transaction
+      case MessageType::BEGIN: {
+        // TODO
+        if (m_in_transaction){
+          send_failed("already in transaction", encoded_msg);
+        } else {
+          m_in_transaction = true;
+          m_transaction_buffer.clear();
+          send_ok(encoded_msg);
+        }
+        break;
+      }
+      // Client commits a transaction
+      case MessageType::COMMIT: {
+        // TODO
+        if (!m_in_transaction) {
+          send_failed("not in transaction", encoded_msg);
+        } else {
+          for (const auto &table_pair : m_transaction_buffer) {
+            const std::string &table_name = table_pair.first;
+            Table *t = m_server->find_table(table_name);
+            if (!t) {
+              send_failed("no such table", encoded_msg);
+              m_in_transaction = false;
+              m_transaction_buffer.clear();
+              return;
+            }
+
+            t->lock();
+            for (const auto &key_value_pair : table_pair.second) {
+              const std::string &key = key_value_pair.first;
+              const std::string &value = key_value_pair.second;
+              t->set(key, value);
+            }
+            t->commit_changes();
+            t->unlock();
+          }
+          m_in_transaction = false;
+          m_transaction_buffer.clear();
+          send_ok(encoded_msg);
+        }
         break;
       }
       // Client logs out (end of connection)
