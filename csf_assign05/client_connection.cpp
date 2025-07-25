@@ -251,14 +251,14 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
   try {
     b = std::stoi(s2, &pos2);
     if (pos2 != s2.size() || s2.find('.') != std::string::npos) {
-      m_stack.push(s2);
       m_stack.push(s1);
+      m_stack.push(s2);
       send_error("non-integer operand", encoded_msg);
       return;
     }
   } catch (const std::invalid_argument &) {
-    m_stack.push(s2);
     m_stack.push(s1);
+    m_stack.push(s2);
     throw OperationException("non-integer operand");
     return;
   } catch (const std::out_of_range &) {
@@ -290,9 +290,9 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
   } 
   */
 
-  if (req.get_message_type() == MessageType::DIV && a == 0) {
-    m_stack.push(s2);
+  if (req.get_message_type() == MessageType::DIV && b == 0) {
     m_stack.push(s1);
+    m_stack.push(s2);
     send_error("Division by zero is not allowed", encoded_msg);
     return;
   }
@@ -403,12 +403,13 @@ void ClientConnection::chat_with_client()
     if(!m_has_logged_in && req.get_message_type() != MessageType::LOGIN){
       throw InvalidMessage("first operation must be LOGIN");
       // send_error("first operation must be LOGIN", encoded_msg);
-      // return;
+      return;
     }
     if (!req.is_valid()) {
       throw InvalidMessage("invalid request");
       // send_error("invalid request", encoded_msg);
-      // continue;
+      //continue;
+      return;
     }
       
     switch (req.get_message_type()) {
