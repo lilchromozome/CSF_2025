@@ -96,7 +96,9 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
   // std::cout << "set " << table << ", " << key << std::endl;
 
   if (!is_valid_identifier(key)){
-    throw OperationException("invalid key name");
+    //throw OperationException("invalid key name");
+    send_failed("invalid key name", encoded_msg);
+    return;
   }
 
   Table *t = m_server->find_table(table);
@@ -459,8 +461,8 @@ void ClientConnection::chat_with_client()
       case MessageType::BEGIN: {
         // TODO
         begin(encoded_msg);
-        m_stack = ValueStack();
-        m_has_stack = false;
+        //m_stack = ValueStack();
+        //m_has_stack = false;
         send_ok(encoded_msg);
         break;
       }
