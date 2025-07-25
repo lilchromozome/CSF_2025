@@ -230,6 +230,46 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
 
   try {
     a = std::stoi(s1, &pos1);
+    if (pos1 != s1.size() || s1.find('.') != std::string::npos) {
+      m_stack.push(s2);
+      m_stack.push(s1);
+      send_error("non-integer operand", encoded_msg);
+      return;
+    }
+  } catch (const std::invalid_argument &) {
+    m_stack.push(s2);
+    m_stack.push(s1);
+    throw OperationException("non-integer operand");
+    return;
+  } catch (const std::out_of_range &) {
+    m_stack.push(s2);
+    m_stack.push(s1);
+    throw OperationException("integer overflow");
+    return;
+  }
+
+  try {
+    b = std::stoi(s2, &pos2);
+    if (pos2 != s2.size() || s2.find('.') != std::string::npos) {
+      m_stack.push(s2);
+      m_stack.push(s1);
+      send_error("non-integer operand", encoded_msg);
+      return;
+    }
+  } catch (const std::invalid_argument &) {
+    m_stack.push(s2);
+    m_stack.push(s1);
+    throw OperationException("non-integer operand");
+    return;
+  } catch (const std::out_of_range &) {
+    m_stack.push(s2);
+    m_stack.push(s1);
+    throw OperationException("integer overflow");
+    return;
+  }
+  /*
+  try {
+    a = std::stoi(s1, &pos1);
     b = std::stoi(s2, &pos2);
     if (pos1 != s1.size() || s1.find('.') != std::string::npos || pos2 != s2.size() || s2.find('.') != std::string::npos) {
       m_stack.push(s2);  // restore the second value
@@ -248,6 +288,7 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
     throw OperationException("integer overflow");
     // send_failed("integer overflow", encoded_msg);
   } 
+  */
 
   if (req.get_message_type() == MessageType::DIV && a == 0) {
     m_stack.push(s2);
@@ -269,9 +310,12 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
       result = b / a;
       break;
     default: 
+      m_stack.push(s2);
+      m_stack.push(s1);
       throw InvalidMessage("unexpected operation");
       // send_error("unexpected operation", encoded_msg);
       // return true;
+      return;
   }
   m_stack.push(std::to_string(result));
   send_ok(encoded_msg);
@@ -434,10 +478,12 @@ void ClientConnection::chat_with_client()
   }
   catch(const InvalidMessage &e){
     send_error(e.what(), encoded_msg);
-    break; //end session
+    //break; //end session
+    return;
   } 
   catch(const CommException &e){
-    break; //drop client
+    //break; //drop client
+    return;
   } 
   catch(const OperationException &e){
     send_failed(e.what(), encoded_msg);
