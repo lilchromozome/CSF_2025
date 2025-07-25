@@ -17,6 +17,7 @@ Server::~Server()
 {
   // TODO: implement
   pthread_mutex_destroy(&tables_mutex);
+  Close(listen_fd);
 }
 
 void Server::listen( const std::string &port )
@@ -83,7 +84,7 @@ void *Server::client_worker( void *arg )
   client->chat_with_client();
   return nullptr;
 */
-  pthread_detach( pthread_self() );
+  // pthread_detach( pthread_self() );
   std::unique_ptr<ClientConnection> client(static_cast<ClientConnection *>(arg));
   client->chat_with_client();  
   return nullptr;

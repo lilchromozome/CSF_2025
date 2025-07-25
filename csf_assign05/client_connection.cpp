@@ -95,9 +95,8 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
   std::string key = req.get_key();
   std::cout << "set " << table << ", " << key << std::endl;
 
-  if(!is_valid_identifier(key)){
-    send_failed("invalid key name", encoded_msg);
-    return;
+  if (!is_valid_identifier(key)){
+    throw OperationException("invalid key name");
   }
 
   Table *t = m_server->find_table(table);
@@ -200,49 +199,52 @@ void ClientConnection::get(Message req, std::string encoded_msg){
 // Pop two integers from operand stack, multiply them, push product
 // Pop right and left integers from operand stack, subtract right from left, push difference
 // Pop right and left integers from operand stack, divide left by right, push quotient
-bool ClientConnection::arithmetic(Message req, std::string encoded_msg){
+void ClientConnection::arithmetic(Message req, std::string encoded_msg){
   // if (!m_has_stack) {
   //   send_failed("no active key", encoded_msg);
   //   return true;
   // } 
   if(m_stack.size() < 2){
-    send_failed("not enough operands", encoded_msg);
-    return true;
+    throw OperationException("not enough operands");
   }
 
-  // need two operands
+  std::string s1 = m_stack.get_top();
+  m_stack.pop();
+  std::string s2 = m_stack.get_top();
+  m_stack.pop();
+  int a,b;
+
+
   try {
-    std::string s1 = m_stack.get_top();
-    m_stack.pop();
-    std::string s2 = m_stack.get_top();
-    m_stack.pop();
-
-    int a = std::stoi(s1);
-    int b = std::stoi(s2);
-    int result;
-    switch (req.get_message_type()) {
-      case MessageType::ADD: result = b + a; break;
-      case MessageType::SUB: result = b - a; break;
-      case MessageType::MUL: result = b * a; break;
-      case MessageType::DIV:
-        if (a == 0) { send_failed("divide by zero", encoded_msg); return true; }
-        result = b / a;
-        break;
-      default: 
-        send_error("unexpected operation", encoded_msg);
-        return true;
-    }
-    m_stack.push(std::to_string(result));
-    send_ok(encoded_msg);
+    a = std::stoi(s1);
+    b = std::stoi(s2);
   } catch (const std::invalid_argument &) {
-    send_failed("non-integer operand", encoded_msg);
+    // send_failed("non-integer operand", encoded_msg);
+    throw OperationException("non-integer operand");
   } catch (const std::out_of_range &) {
-    send_failed("integer overflow", encoded_msg);
-  } catch (const std::exception &) {
-    send_failed("stack empty", encoded_msg);
-  }
+    throw OperationException("integer overflow");
+    // send_failed("integer overflow", encoded_msg);
+  } 
 
-  return false;
+  int result = 0;
+  switch (req.get_message_type()) {
+    case MessageType::ADD: result = b + a; break;
+    case MessageType::SUB: result = b - a; break;
+    case MessageType::MUL: result = b * a; break;
+    case MessageType::DIV:
+      if (a == 0) { 
+        throw OperationException("div by zero");
+        // send_failed("divide by zero", encoded_msg); return true; 
+      }
+      result = b / a;
+      break;
+    default: 
+      throw InvalidMessage("unexpected operation");
+      // send_error("unexpected operation", encoded_msg);
+      // return true;
+  }
+  m_stack.push(std::to_string(result));
+  send_ok(encoded_msg);
 }
 
 // Client begins a transaction
@@ -316,19 +318,21 @@ void ClientConnection::chat_with_client()
   std::string encoded_msg;
   while (true) {
     if (Rio_readlineb(&m_fdbuf, buf, sizeof(buf)) <= 0)
-      break; // client closed
+      throw CommException("I/O error"); // client closed
 
     Message req;
     MessageSerialization::decode(buf, req);
 
     if(!m_has_logged_in && req.get_message_type() != MessageType::LOGIN){
-      send_error("first operation must be LOGIN", encoded_msg);
-      return;
+      throw InvalidMessage("first operation must be LOGIN");
+      // send_error("first operation must be LOGIN", encoded_msg);
+      // return;
     }
 
     if (!req.is_valid()) {
-      send_error("invalid request", encoded_msg);
-      continue;
+      throw InvalidMessage("invalid request");
+      // send_error("invalid request", encoded_msg);
+      // continue;
     }
 
     try{
@@ -338,10 +342,8 @@ void ClientConnection::chat_with_client()
       case MessageType::LOGIN: {
         // Always ok?
         const std::string &user = req.get_username();
-        if(!is_valid_identifier(user)){
-          send_failed("invalid username", encoded_msg);
-          return;
-        }
+        if (!is_valid_identifier(user))
+          throw InvalidMessage("invalid username");
         m_has_logged_in = true;
         send_ok(encoded_msg);
         break;
@@ -375,7 +377,7 @@ void ClientConnection::chat_with_client()
       case MessageType::MUL:    // Pop right and left integers from operand stack, subtract right from left, push difference
       case MessageType::DIV:    // Pop right and left integers from operand stack, divide left by right, push quotient
       {
-        if(arithmetic(req, encoded_msg)) continue;
+        arithmetic(req, encoded_msg);
         break;
       }
       case MessageType::BEGIN: {
@@ -399,7 +401,19 @@ void ClientConnection::chat_with_client()
         break;
       }
     }
-  } catch (const FailedTransaction &e) {
+  }
+  catch(const InvalidMessage &e){
+    send_error(e.what(), encoded_msg);
+    break; //end session
+  } 
+  catch(const CommException &e){
+    break; //drop client
+  } 
+  catch(const OperationException &e){
+    send_failed(e.what(), encoded_msg);
+    if(m_in_transaction) rollback_transaction();
+  }
+  catch(const FailedTransaction &e) {
       send_failed(e.what(), encoded_msg);
       rollback_transaction();
     }
