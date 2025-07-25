@@ -169,10 +169,17 @@ void ClientConnection::get(Message req, std::string encoded_msg){
   }
 
   try {
-    if(!t->has_key(key)){
-      throw OperationException("no such key");
+    std::string val;
+
+    if (m_in_transaction && m_transaction_buffer.count(table) && m_transaction_buffer[table].count(key)) {
+      val = m_transaction_buffer[table][key];
+    } else {
+      if (!t->has_key(key)) {
+        throw OperationException("no such key");
+      }
+      val = t->get(key);
     }
-    std::string val = t->get(key);
+
     //std::cout << val << std::endl;
     //m_stack = ValueStack(); // reset stack
     m_stack.push(val);
@@ -463,7 +470,7 @@ void ClientConnection::chat_with_client()
         begin(encoded_msg);
         //m_stack = ValueStack();
         //m_has_stack = false;
-        send_ok(encoded_msg);
+        // send_ok(encoded_msg);
         break;
       }
       case MessageType::COMMIT: {
