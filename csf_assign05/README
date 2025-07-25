@@ -11,3 +11,21 @@ Sichen:
 Message 
 MessageSerialization 
 
+What data structures needed to be synchronized, and why?
+
+The global tables map in Server need to be synchronized for each thread because they can all access it at the same time. 
+Each Table object also needed to be synced as the key-value pairs that may be read or modified by multiple threads. To ensure consistency, a mutex is used for every table.
+The transaction state for each thread is also synchronized, ensuring that each thread correctly locks/unlocks tables during transactions is essential for thread safety.
+
+How did you synchronize the data structures requiring synchronization?
+
+A pthread_mutex_t tables_mutex in Server guards all accesses to the tables map.
+Each Table has its own mutex and the handlers call lock()/unlock()/trylock() for reads/writes.
+During autocommit Tables are locked during each operation and unlocked afterward. WHile during transaction mode, Tables are locked with trylock() to avoid deadlocks, and all successful locks are tracked in m_locked_tables. When committed, all locked tables are then unlocked. When there is a failure, changes are discarded and locks are also released.
+Transactional operations record and release table locks with m_locked_tables to ensure atomic multi‑table commits.
+
+Why are you confident that the server is free of race conditions and deadlocks?
+
+All mutexes follow a consistent acquisition order tables_mutex->Table locks preventing lock-order inversion.
+Locks are always released in the same scope or during rollback/commit, ensuring no mutex remains held after an error.
+Transactions acquire each table’s lock at most once and release all locks at commit or rollback to avoid cyclic waits.
