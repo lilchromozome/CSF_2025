@@ -206,25 +206,55 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
   // } 
   if(m_stack.size() < 2){
     throw OperationException("not enough operands");
+    return;
+  }
+  if (m_stack.is_empty()||m_stack.get_top() == "") {
+    send_failed("stack empty", encoded_msg);
+    return;
   }
 
   std::string s1 = m_stack.get_top();
   m_stack.pop();
+
+  if (m_stack.is_empty() || m_stack.get_top() == "") {
+    m_stack.push(s1);
+    send_failed("Insufficient values for operation", encoded_msg);
+    return;
+  }
+
   std::string s2 = m_stack.get_top();
   m_stack.pop();
-  int a,b;
 
+  int a,b;
+  size_t pos1, pos2;
 
   try {
-    a = std::stoi(s1);
-    b = std::stoi(s2);
+    a = std::stoi(s1, &pos1);
+    b = std::stoi(s2, &pos2);
+    if (pos1 != s1.size() || s1.find('.') != std::string::npos || pos2 != s2.size() || s2.find('.') != std::string::npos) {
+      m_stack.push(s2);  // restore the second value
+      m_stack.push(s1);  // restore the first value
+      send_error("non-integer operand", encoded_msg);
+      return;
+    }
   } catch (const std::invalid_argument &) {
     // send_failed("non-integer operand", encoded_msg);
+    m_stack.push(s2);
+    m_stack.push(s1);
     throw OperationException("non-integer operand");
   } catch (const std::out_of_range &) {
+    m_stack.push(s2);
+    m_stack.push(s1);
     throw OperationException("integer overflow");
     // send_failed("integer overflow", encoded_msg);
   } 
+
+  if (req.get_message_type() == MessageType::DIV && a == 0) {
+    m_stack.push(s2);
+    m_stack.push(s1);
+    send_error("Division by zero is not allowed", encoded_msg);
+    return;
+  }
 
   int result = 0;
   switch (req.get_message_type()) {
@@ -232,10 +262,10 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
     case MessageType::SUB: result = b - a; break;
     case MessageType::MUL: result = b * a; break;
     case MessageType::DIV:
-      if (a == 0) { 
-        throw OperationException("div by zero");
-        // send_failed("divide by zero", encoded_msg); return true; 
-      }
+      //if (a == 0) { 
+        //throw OperationException("div by zero");
+        //// send_failed("divide by zero", encoded_msg); return true; 
+      //}
       result = b / a;
       break;
     default: 
