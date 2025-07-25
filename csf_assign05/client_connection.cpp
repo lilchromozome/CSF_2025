@@ -316,9 +316,12 @@ void ClientConnection::chat_with_client()
   // TODO: implement
   char buf[Message::MAX_ENCODED_LEN];
   std::string encoded_msg;
+
   while (true) {
+    try{
     if (Rio_readlineb(&m_fdbuf, buf, sizeof(buf)) <= 0)
       throw CommException("I/O error"); // client closed
+      // break;
 
     Message req;
     MessageSerialization::decode(buf, req);
@@ -328,14 +331,11 @@ void ClientConnection::chat_with_client()
       // send_error("first operation must be LOGIN", encoded_msg);
       // return;
     }
-
     if (!req.is_valid()) {
       throw InvalidMessage("invalid request");
       // send_error("invalid request", encoded_msg);
       // continue;
     }
-
-    try{
       
     switch (req.get_message_type()) {
       // Client logs in
