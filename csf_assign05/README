@@ -5,11 +5,14 @@ get_value
 set_value
 incr_value
 Table
-
+client_connection.cpp
+server
 
 Sichen:
 Message 
 MessageSerialization 
+client_connection.cpp w transactions
+
 
 What data structures needed to be synchronized, and why?
 
