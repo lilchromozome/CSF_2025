@@ -82,7 +82,7 @@ void ClientConnection::top(std::string encoded_msg){
       std::string val = m_stack.get_top();
       send_data(val, encoded_msg);
     } catch (const std::exception &e) {
-      std::cout << e.what() << std::endl;
+      //std::cout << e.what() << std::endl;
       send_failed("stack empty", encoded_msg);
     }
   }
@@ -93,7 +93,7 @@ void ClientConnection::top(std::string encoded_msg){
 void ClientConnection::set(const Message &req, std::string encoded_msg){
   std::string table = req.get_table();
   std::string key = req.get_key();
-  std::cout << "set " << table << ", " << key << std::endl;
+  // std::cout << "set " << table << ", " << key << std::endl;
 
   if (!is_valid_identifier(key)){
     throw OperationException("invalid key name");
@@ -147,7 +147,7 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
 void ClientConnection::get(Message req, std::string encoded_msg){
   std::string table = req.get_table();
   std::string key   = req.get_key();
-  std::cout << "get " << table << ", " << key << std::endl;
+  //std::cout << "get " << table << ", " << key << std::endl;
   Table *t = m_server->find_table(table);
 
   if (!t) {
@@ -161,9 +161,9 @@ void ClientConnection::get(Message req, std::string encoded_msg){
         rollback_transaction();
         throw FailedTransaction("could not lock table");
       }
-    } else{
-      t->lock();
-    }
+    } //else{
+      //t->lock();
+    //}
   }
 
   try {
@@ -171,8 +171,8 @@ void ClientConnection::get(Message req, std::string encoded_msg){
       throw OperationException("no such key");
     }
     std::string val = t->get(key);
-      std::cout << val << std::endl;
-    m_stack = ValueStack(); // reset stack
+    //std::cout << val << std::endl;
+    //m_stack = ValueStack(); // reset stack
     m_stack.push(val);
     m_table = table;
     m_key   = key;
@@ -183,7 +183,7 @@ void ClientConnection::get(Message req, std::string encoded_msg){
     }
     send_ok(encoded_msg);
   } catch (const OperationException &e) {
-    std::cout << e.what() << std::endl;
+    // std::cout << e.what() << std::endl;
     if (m_in_transaction) {
       rollback_transaction();                        // rollback if inside transaction
       throw FailedTransaction("no such key");        // MUST throw
@@ -420,6 +420,7 @@ void ClientConnection::chat_with_client()
         if (!is_valid_identifier(user))
           throw InvalidMessage("invalid username");
         m_has_logged_in = true;
+      
         send_ok(encoded_msg);
         break;
       }
@@ -458,6 +459,9 @@ void ClientConnection::chat_with_client()
       case MessageType::BEGIN: {
         // TODO
         begin(encoded_msg);
+        m_stack = ValueStack();
+        m_has_stack = false;
+        send_ok(encoded_msg);
         break;
       }
       case MessageType::COMMIT: {
