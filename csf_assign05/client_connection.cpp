@@ -41,6 +41,7 @@ static bool is_valid_identifier(const std::string &u){
 //Ask server to create named table
 void ClientConnection::create(Message req, std::string encoded_msg){
   std::string name = req.get_table();
+  if(!is_valid_identifier(name)) throw OperationException("invalid table name");
   m_server->create_table(name);
   send_ok(encoded_msg);
   return;
@@ -95,8 +96,13 @@ void ClientConnection::set(const Message &req, std::string encoded_msg){
   std::string key = req.get_key();
 
   if (!is_valid_identifier(key)){
-    //throw OperationException("invalid key name");
-    send_failed("invalid key name", encoded_msg);
+    throw OperationException("invalid key name");
+    // send_failed("invalid key name", encoded_msg);
+    return;
+  }
+  if (!is_valid_identifier(table)){
+    throw OperationException("invalid table name");
+    // send_failed("invalid table name", encoded_msg);
     return;
   }
 
@@ -379,10 +385,10 @@ void ClientConnection::chat_with_client()
       // send_error("first operation must be LOGIN", encoded_msg);
       return;
     }
-    // if (!req.is_valid()) {
-    //   throw InvalidMessage("invalid request");
-    //   return;
-    // }
+    if (!req.is_valid()) {
+      throw InvalidMessage("invalid request");
+      return;
+    }
 
     req.print_message();
 
