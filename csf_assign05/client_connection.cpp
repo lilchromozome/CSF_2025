@@ -93,7 +93,6 @@ void ClientConnection::top(std::string encoded_msg){
 void ClientConnection::set(const Message &req, std::string encoded_msg){
   std::string table = req.get_table();
   std::string key = req.get_key();
-  // std::cout << "set " << table << ", " << key << std::endl;
 
   if (!is_valid_identifier(key)){
     //throw OperationException("invalid key name");
@@ -180,8 +179,6 @@ void ClientConnection::get(Message req, std::string encoded_msg){
       val = t->get(key);
     }
 
-    //std::cout << val << std::endl;
-    //m_stack = ValueStack(); // reset stack
     m_stack.push(val);
     m_table = table;
     m_key   = key;
@@ -209,10 +206,6 @@ void ClientConnection::get(Message req, std::string encoded_msg){
 // Pop right and left integers from operand stack, subtract right from left, push difference
 // Pop right and left integers from operand stack, divide left by right, push quotient
 void ClientConnection::arithmetic(Message req, std::string encoded_msg){
-  // if (!m_has_stack) {
-  //   send_failed("no active key", encoded_msg);
-  //   return true;
-  // } 
   if(m_stack.size() < 2){
     throw OperationException("not enough operands");
     return;
@@ -276,28 +269,6 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
     throw OperationException("integer overflow");
     return;
   }
-  /*
-  try {
-    a = std::stoi(s1, &pos1);
-    b = std::stoi(s2, &pos2);
-    if (pos1 != s1.size() || s1.find('.') != std::string::npos || pos2 != s2.size() || s2.find('.') != std::string::npos) {
-      m_stack.push(s2);  // restore the second value
-      m_stack.push(s1);  // restore the first value
-      send_error("non-integer operand", encoded_msg);
-      return;
-    }
-  } catch (const std::invalid_argument &) {
-    // send_failed("non-integer operand", encoded_msg);
-    m_stack.push(s2);
-    m_stack.push(s1);
-    throw OperationException("non-integer operand");
-  } catch (const std::out_of_range &) {
-    m_stack.push(s2);
-    m_stack.push(s1);
-    throw OperationException("integer overflow");
-    // send_failed("integer overflow", encoded_msg);
-  } 
-  */
 
   if (req.get_message_type() == MessageType::DIV && b == 0) {
     m_stack.push(s1);
@@ -312,18 +283,12 @@ void ClientConnection::arithmetic(Message req, std::string encoded_msg){
     case MessageType::SUB: result = b - a; break;
     case MessageType::MUL: result = b * a; break;
     case MessageType::DIV:
-      //if (a == 0) { 
-        //throw OperationException("div by zero");
-        //// send_failed("divide by zero", encoded_msg); return true; 
-      //}
       result = b / a;
       break;
     default: 
       m_stack.push(s2);
       m_stack.push(s1);
       throw InvalidMessage("unexpected operation");
-      // send_error("unexpected operation", encoded_msg);
-      // return true;
       return;
   }
   m_stack.push(std::to_string(result));
@@ -414,13 +379,13 @@ void ClientConnection::chat_with_client()
       // send_error("first operation must be LOGIN", encoded_msg);
       return;
     }
-    if (!req.is_valid()) {
-      throw InvalidMessage("invalid request");
-      // send_error("invalid request", encoded_msg);
-      //continue;
-      return;
-    }
-      
+    // if (!req.is_valid()) {
+    //   throw InvalidMessage("invalid request");
+    //   return;
+    // }
+
+    req.print_message();
+
     switch (req.get_message_type()) {
       // Client logs in
       case MessageType::LOGIN: {
@@ -468,9 +433,6 @@ void ClientConnection::chat_with_client()
       case MessageType::BEGIN: {
         // TODO
         begin(encoded_msg);
-        //m_stack = ValueStack();
-        //m_has_stack = false;
-        // send_ok(encoded_msg);
         break;
       }
       case MessageType::COMMIT: {
@@ -485,7 +447,7 @@ void ClientConnection::chat_with_client()
       // Error?
       default: {
         // TODO
-        send_error("unrecognized command", encoded_msg);
+        throw InvalidMessage("invalid request");
         break;
       }
     }

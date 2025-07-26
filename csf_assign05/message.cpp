@@ -1,3 +1,4 @@
+#include <iostream>
 #include <set>
 #include <map>
 #include <regex>
@@ -153,4 +154,37 @@ bool Message::is_valid() const
     default:
       return false;
   }
+}
+
+void Message::print_message() {
+  std::string type_str;
+  switch (m_message_type) {
+    case MessageType::NONE:    type_str = "NONE"; break;
+    case MessageType::LOGIN:   type_str = "LOGIN"; break;
+    case MessageType::CREATE:  type_str = "CREATE"; break;
+    case MessageType::PUSH:    type_str = "PUSH"; break;
+    case MessageType::POP:     type_str = "POP"; break;
+    case MessageType::TOP:     type_str = "TOP"; break;
+    case MessageType::SET:     type_str = "SET"; break;
+    case MessageType::GET:     type_str = "GET"; break;
+    case MessageType::ADD:     type_str = "ADD"; break;
+    case MessageType::SUB:     type_str = "SUB"; break;
+    case MessageType::MUL:     type_str = "MUL"; break;
+    case MessageType::DIV:     type_str = "DIV"; break;
+    case MessageType::BEGIN:   type_str = "BEGIN"; break;
+    case MessageType::COMMIT:  type_str = "COMMIT"; break;
+    case MessageType::BYE:     type_str = "BYE"; break;
+    case MessageType::OK:      type_str = "OK"; break;
+    case MessageType::FAILED:  type_str = "FAILED"; break;
+    case MessageType::ERROR:   type_str = "ERROR"; break;
+    case MessageType::DATA:    type_str = "DATA"; break;
+    default:                   type_str = "UNKNOWN"; break;
+  }
+
+  // Print the type and arguments
+  std::cout << type_str;
+  for (const auto &arg : m_args) {
+    std::cout << " " << arg << " ";
+  }
+  std::cout << std::endl;
 }

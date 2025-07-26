@@ -57,6 +57,8 @@ public:
   std::string get_value() const;
   std::string get_quoted_text() const;
 
+  void print_message();
+
   void push_arg( const std::string &arg );
 
   bool is_valid() const;
